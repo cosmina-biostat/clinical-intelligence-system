@@ -33,6 +33,8 @@ Extract the following fields:
 - validation_rules
 - validation_ranges
 - data_types
+- eligibility_criteria
+- medication_guidelines
 
 When creating field_classification and validation_ranges, use these STANDARD field names where the field matches (short snake_case, no units):
 {STANDARD_FIELD_NAMES}
@@ -47,6 +49,8 @@ Rules:
   - "permissible": optional fields
 - For validation_ranges: structure each field BY UNIT. Use the unit as a key (e.g. "g/dL", "mmol/L", "/mcL"). If the protocol gives the same field in multiple units, include each unit separately. Use null where no limit is specified. For relative limits like "2.5 xULN", use "xULN" as the unit key.
 - For validation_ranges keys: use the STANDARD field names above where applicable; for other fields create a clean snake_case name (lowercase, no units)
+- For eligibility_criteria: extract inclusion and exclusion criteria as two separate lists (inclusion/exclusion), each item as a short clear statement
+- For medication_guidelines: extract study medication, prohibited medications/treatments, and allowed exceptions as structured lists
 
 Respond ONLY with JSON in this format:
 {{
@@ -63,7 +67,27 @@ Respond ONLY with JSON in this format:
     }},
     "validation_rules": "...",
     "validation_ranges": {{"hemoglobin": {{"g/dL": {{"min": 9, "max": null}}, "mmol/L": {{"min": 5.6, "max": null}}}}, "anc": {{"/mcL": {{"min": 1500, "max": null}}}}}},
-    "data_types": "..."
+    "data_types": "...",
+    "eligibility_criteria": {{
+        "inclusion": [
+            "Age >= 18 years",
+            "Stage IIIA (>1mm metastasis), IIIB, or IIIC"
+        ],
+        "exclusion": [
+            "Prior anti-PD-1/PD-L1 therapy",
+            "Active autoimmune disease"
+        ]
+    }},
+    "medication_guidelines": {{
+        "study_medication": "Pembrolizumab 200mg IV Q3W, up to 18 doses",
+        "prohibited": [
+            "Live vaccines within 30 days",
+            "Systemic steroids within 7 days"
+        ],
+        "allowed": [
+            "Anticoagulants if in therapeutic range"
+        ]
+    }}
 }}"""
 
     # 3. Build content
