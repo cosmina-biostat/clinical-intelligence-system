@@ -1,0 +1,111 @@
+============================================================
+  ClinOrigin AI -- Review Classifier Training Report
+============================================================
+  Best model (by CV F1) : XGBoost
+  CV F1                 : 0.8820 +/- 0.0182
+  Test F1               : 0.8676
+  Block recall          : 0.8197
+
+============================================================
+  Model: LogisticRegression
+============================================================
+  Train F1     : 0.8872   (Acc 0.8988)
+  Test  F1     : 0.8870   (Acc 0.8925)
+  Overfit gap  : +0.0002
+  Block recall : 0.9180
+  CV F1        : 0.8817 +/- 0.0209
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       Block      0.903     0.918     0.911        61
+       Clean      0.952     0.901     0.926       222
+      Review      0.789     0.863     0.824       117
+
+    accuracy                          0.892       400
+   macro avg      0.882     0.894     0.887       400
+weighted avg      0.897     0.892     0.894       400
+
+  Confusion Matrix (rows=true, cols=pred):
+  Labels: [np.str_('Block'), np.str_('Clean'), np.str_('Review')]
+  Block    [56  0  5]
+  Clean    [  0 200  22]
+  Review   [  6  10 101]
+
+============================================================
+  Model: RandomForest
+============================================================
+  Train F1     : 0.9393   (Acc 0.9487)
+  Test  F1     : 0.8670   (Acc 0.8850)
+  Overfit gap  : +0.0723
+  Block recall : 0.8361
+  CV F1        : 0.8700 +/- 0.0182
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       Block      0.879     0.836     0.857        61
+       Clean      0.945     0.923     0.934       222
+      Review      0.784     0.838     0.810       117
+
+    accuracy                          0.885       400
+   macro avg      0.869     0.866     0.867       400
+weighted avg      0.888     0.885     0.886       400
+
+  Confusion Matrix (rows=true, cols=pred):
+  Labels: [np.str_('Block'), np.str_('Clean'), np.str_('Review')]
+  Block    [51  0 10]
+  Clean    [  0 205  17]
+  Review   [ 7 12 98]
+
+============================================================
+  Model: XGBoost
+============================================================
+  Train F1     : 0.9856   (Acc 0.9869)
+  Test  F1     : 0.8676   (Acc 0.8850)
+  Overfit gap  : +0.1180
+  Block recall : 0.8197
+  CV F1        : 0.8820 +/- 0.0182
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       Block      0.909     0.820     0.862        61
+       Clean      0.932     0.932     0.932       222
+      Review      0.789     0.829     0.808       117
+
+    accuracy                          0.885       400
+   macro avg      0.877     0.860     0.868       400
+weighted avg      0.887     0.885     0.885       400
+
+  Confusion Matrix (rows=true, cols=pred):
+  Labels: [np.str_('Block'), np.str_('Clean'), np.str_('Review')]
+  Block    [50  0 11]
+  Clean    [  0 207  15]
+  Review   [ 5 15 97]
+
+============================================================
+  Model: LightGBM
+============================================================
+  Train F1     : 0.9761   (Acc 0.9769)
+  Test  F1     : 0.8736   (Acc 0.8875)
+  Overfit gap  : +0.1025
+  Block recall : 0.8361
+  CV F1        : 0.8704 +/- 0.0191
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       Block      0.911     0.836     0.872        61
+       Clean      0.949     0.914     0.931       222
+      Review      0.777     0.863     0.818       117
+
+    accuracy                          0.887       400
+   macro avg      0.879     0.871     0.874       400
+weighted avg      0.893     0.887     0.889       400
+
+  Confusion Matrix (rows=true, cols=pred):
+  Labels: [np.str_('Block'), np.str_('Clean'), np.str_('Review')]
+  Block    [51  0 10]
+  Clean    [  0 203  19]
+  Review   [  5  11 101]
