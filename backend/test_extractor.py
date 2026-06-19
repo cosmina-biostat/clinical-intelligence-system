@@ -1,5 +1,5 @@
-from protocol_parser import get_schema
-from extractor import extract_data,save_record
+from backend.protocol_parser import get_schema
+from backend.extractor import extract_data,save_record
 
 # load schema
 schema = get_schema("Prot_SAP_000.pdf")

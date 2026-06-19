@@ -1,17 +1,15 @@
+import os
+import io
+import csv
 import requests
 import streamlit as st
 
-# ── Config ────────────────────────────────────────────────────────────────────
-API = st.secrets.get("API_URL", "http://localhost:8000") if hasattr(st, "secrets") else "http://localhost:8000"
+API = os.environ.get("API_URL", "http://localhost:8000")
 
-st.set_page_config(
-    page_title="ClinOrigin AI",
-    page_icon="\u2695",  # medical symbol
-    layout="wide",
-)
+st.set_page_config(page_title="ClinOrigin AI", page_icon="\u2695", layout="wide")
 
-# ── Verdict styling (the signature element) ───────────────────────────────────
-VERDICT_STYLE = {
+# ── Verdict palette ───────────────────────────────────────────────────────────
+VERDICT = {
     "Clean":  {"color": "#1a7f5a", "bg": "#e8f5ef", "icon": "\u2713", "label": "CLEAN"},
     "Review": {"color": "#b8860b", "bg": "#fbf3e0", "icon": "\u26a0", "label": "REVIEW"},
     "Block":  {"color": "#b22222", "bg": "#fbe9e9", "icon": "\u2715", "label": "BLOCK"},
@@ -19,17 +17,17 @@ VERDICT_STYLE = {
 
 st.markdown("""
 <style>
-    .verdict-card {
-        border-radius: 14px; padding: 24px 28px; margin: 8px 0 16px 0;
-        display: flex; align-items: center; gap: 20px;
-    }
-    .verdict-icon { font-size: 44px; line-height: 1; }
-    .verdict-label { font-size: 30px; font-weight: 700; letter-spacing: 1px; }
-    .verdict-sub { font-size: 14px; opacity: 0.8; margin-top: 2px; }
-    .metric-small { font-size: 13px; color: #555; }
+    .verdict-card { border-radius: 14px; padding: 22px 26px; margin: 8px 0 16px 0;
+        display: flex; align-items: center; gap: 18px; }
+    .verdict-icon { font-size: 40px; line-height: 1; }
+    .verdict-label { font-size: 26px; font-weight: 700; letter-spacing: 1px; }
+    .verdict-sub { font-size: 13px; opacity: 0.8; margin-top: 2px; }
     .flag-high { color: #b22222; font-weight: 600; }
     .flag-medium { color: #b8860b; }
     .flag-low { color: #888; }
+    .step-pill { display:inline-block; padding:4px 10px; border-radius:20px;
+        font-size:12px; margin-right:6px; background:#eef1f4; color:#555; }
+    .step-done { background:#e8f5ef; color:#1a7f5a; font-weight:600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -53,242 +51,330 @@ def api_post(path, payload):
         return None, str(e)
 
 
-# ── Sidebar: context + control ────────────────────────────────────────────────
+def api_post_files(path, data, files):
+    try:
+        r = requests.post(f"{API}{path}", data=data, files=files, timeout=180)
+        r.raise_for_status()
+        return r.json(), None
+    except Exception as e:
+        return None, str(e)
+
+
+# ── Session state init ────────────────────────────────────────────────────────
+for key, default in [("schema", None), ("protocol_id", None),
+                     ("pdf_path", None), ("records", [])]:
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+
+# ── Sidebar: navigation + status ──────────────────────────────────────────────
 with st.sidebar:
     st.title("\u2695 ClinOrigin AI")
     st.caption("Clinical data extraction & validation")
-
     st.divider()
 
-    # Backend status
-    health, err = api_get("/health")
-    if err:
+    health, herr = api_get("/health")
+    if herr:
         st.error("Backend offline")
-        st.caption(f"Start FastAPI, then reload.\n\n`{err[:80]}`")
+        st.caption("Start FastAPI, then reload.")
         st.stop()
-    else:
-        st.success("Backend online")
-        models = health.get("models", {})
-        st.caption(
-            f"Classifier: {'ok' if models.get('classifier') else 'missing'}  \n"
-            f"Quality: {'ok' if models.get('quality_regressor') else 'missing'}  \n"
-            f"Safety threshold: {models.get('safety_threshold')}"
-        )
+    st.success("Backend online")
 
     st.divider()
+    page = st.radio(
+        "Workflow",
+        ["1. Protocol", "2. Extraction", "3. Structured",
+         "4. Monitoring", "5. Chatbox", "6. Export"],
+        label_visibility="collapsed",
+    )
 
-    # Protocol selection
-    st.subheader("Protocol")
-    loaded = health.get("protocols_loaded", [])
-    if loaded:
-        protocol_id = st.selectbox("Loaded protocol", loaded)
+    st.divider()
+    # current context
+    if st.session_state.schema:
+        st.caption(f"Protocol loaded:\n\n**{st.session_state.schema.get('study_name','?')}**")
     else:
-        protocol_id = None
-        st.info("No protocol loaded yet.")
-
-    with st.expander("Load a new protocol"):
-        pdf_path = st.text_input("Server-side PDF path", placeholder="protocols/HeartMagic.pdf")
-        if st.button("Parse protocol", use_container_width=True):
-            if pdf_path:
-                with st.spinner("Parsing protocol (one-time, builds RAG index)..."):
-                    res, perr = api_post("/protocol/parse", {"pdf_path": pdf_path})
-                if perr:
-                    st.error(f"Parse failed: {perr}")
-                else:
-                    st.success(f"Loaded: {res['study_name']}")
-                    st.rerun()
-            else:
-                st.warning("Enter a PDF path.")
+        st.caption("No protocol loaded yet.")
+    st.caption(f"Records extracted: {len(st.session_state.records)}")
 
 
-# ── Main area: tabs ───────────────────────────────────────────────────────────
-tab_analyse, tab_chat, tab_schema = st.tabs(["Analyse", "Chatbox", "Schema"])
+# ── Reusable input box (text + file in one place) ─────────────────────────────
+def input_box(key_prefix: str, placeholder: str):
+    """
+    Returns (text, uploaded_files). Mimics the demo's chat-style box:
+    a text area plus an attach-files control, together.
+    """
+    text = st.text_area("Input", height=150, placeholder=placeholder,
+                        label_visibility="collapsed", key=f"{key_prefix}_text")
+    files = st.file_uploader("Attach files (.txt / .pdf)", type=["txt", "pdf"],
+                            accept_multiple_files=True, key=f"{key_prefix}_files")
+    return text, files
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  TAB 1: ANALYSE
+#  PAGE 1: PROTOCOL
 # ════════════════════════════════════════════════════════════════════════════
-with tab_analyse:
-    if not protocol_id:
-        st.info("Load a protocol in the sidebar to start analysing patient documents.")
-    else:
-        st.subheader("Patient documents")
-        st.caption("Paste source text or upload files. Each document is one source "
-                   "(lab report, visit note); they are merged per patient.")
+if page == "1. Protocol":
+    st.header("Protocol")
+    st.caption("Parse a clinical study protocol into a structured schema. "
+               "This runs once per study and is cached.")
 
-        col_in, col_btn = st.columns([4, 1])
-        with col_in:
-            input_mode = st.radio("Input", ["Paste text", "Upload files"],
-                                  horizontal=True, label_visibility="collapsed")
+    st.markdown(
+        "<span class='step-pill step-done'>PDF</span>"
+        "<span class='step-pill'>RAG index</span>"
+        "<span class='step-pill'>Parse</span>"
+        "<span class='step-pill'>Schema</span>",
+        unsafe_allow_html=True)
+    st.write("")
 
-        documents = []
-        uploaded_files = []
-        if input_mode == "Paste text":
-            txt = st.text_area("Source document text", height=180,
-                               placeholder="Paste lab report / visit note text here...")
-            if txt.strip():
-                documents = [txt.strip()]
+    pdf_path = st.text_input("Protocol PDF path (server-side)",
+                             value=st.session_state.pdf_path or "",
+                             placeholder="protocols/Prot_SAP_000.pdf")
+
+    if st.button("Parse protocol", type="primary", disabled=not pdf_path):
+        with st.spinner("Parsing protocol (builds RAG index, one-time)..."):
+            res, err = api_post("/protocol/parse", {"pdf_path": pdf_path})
+        if err:
+            st.error(f"Parse failed: {err}")
         else:
-            uploaded_files = st.file_uploader(
-                "Upload .txt or .pdf", type=["txt", "pdf"],
-                accept_multiple_files=True) or []
-            if uploaded_files:
-                st.caption(f"{len(uploaded_files)} file(s) ready. "
-                           "PDF text is extracted on the server.")
+            st.session_state.protocol_id = res["protocol_id"]
+            st.session_state.pdf_path = pdf_path
+            sch, serr = api_get("/protocol/schema",
+                                params={"protocol_id": res["protocol_id"]})
+            st.session_state.schema = sch if not serr else None
+            st.success(f"Loaded: {res.get('study_name')}")
 
-        has_input = bool(documents) or bool(uploaded_files)
-        analyse = st.button("Analyse", type="primary", use_container_width=True,
-                            disabled=not has_input)
+    # Show schema if loaded
+    if st.session_state.schema:
+        sc = st.session_state.schema
+        st.divider()
+        c1, c2 = st.columns(2)
+        c1.metric("Study", sc.get("study_name", "\u2014"))
+        c2.metric("Indication", sc.get("indication", "\u2014"))
 
-        if analyse and has_input:
+        fc = sc.get("field_classification", {})
+        st.markdown("**Field classification (CDISC core)**")
+        f1, f2, f3 = st.columns(3)
+        f1.markdown("**Required**\n\n" + "\n".join(f"- {x}" for x in fc.get("required", [])))
+        f2.markdown("**Expected**\n\n" + "\n".join(f"- {x}" for x in fc.get("expected", [])))
+        f3.markdown("**Permissible**\n\n" + "\n".join(f"- {x}" for x in fc.get("permissible", [])))
+
+        with st.expander("Validation ranges"):
+            st.json(sc.get("validation_ranges", {}))
+        with st.expander("Eligibility criteria"):
+            st.json(sc.get("eligibility_criteria", {}))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  PAGE 2: EXTRACTION
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "2. Extraction":
+    st.header("Extraction")
+    st.caption("Paste patient source text or attach files. The system extracts, "
+               "validates, and classifies each record.")
+
+    st.markdown(
+        "<span class='step-pill step-done'>Input</span>"
+        "<span class='step-pill'>Extract</span>"
+        "<span class='step-pill'>Validate</span>"
+        "<span class='step-pill'>Review</span>"
+        "<span class='step-pill'>Result</span>",
+        unsafe_allow_html=True)
+    st.write("")
+
+    if not st.session_state.protocol_id:
+        st.info("Load a protocol first (page 1).")
+    else:
+        text, files = input_box("extract", "Paste lab report / visit note text...")
+        has_input = bool(text.strip()) or bool(files)
+
+        if st.button("Extract & Analyse", type="primary", disabled=not has_input):
             with st.spinner("Extracting, validating, classifying..."):
-                if uploaded_files:
-                    # Send files to the upload endpoint (server extracts PDF text)
+                if files:
                     multipart = [
                         ("files", (f.name, f.getvalue(),
                                    "application/pdf" if f.name.lower().endswith(".pdf")
                                    else "text/plain"))
-                        for f in uploaded_files
+                        for f in files
                     ]
-                    try:
-                        resp = requests.post(
-                            f"{API}/analyze/upload",
-                            data={"protocol_id": protocol_id},
-                            files=multipart, timeout=180)
-                        resp.raise_for_status()
-                        res, aerr = resp.json(), None
-                    except Exception as e:
-                        res, aerr = None, str(e)
+                    res, err = api_post_files(
+                        "/analyze/upload",
+                        {"protocol_id": st.session_state.protocol_id}, multipart)
                 else:
-                    res, aerr = api_post("/analyze", {
-                        "protocol_id": protocol_id,
-                        "documents": documents,
+                    res, err = api_post("/analyze", {
+                        "protocol_id": st.session_state.protocol_id,
+                        "documents": [text.strip()],
                     })
-            if aerr:
-                st.error(f"Analysis failed: {aerr}")
+            if err:
+                st.error(f"Analysis failed: {err}")
             else:
-                results = res.get("results", [])
-                st.caption(f"{len(results)} patient record(s) processed.")
+                st.session_state.records = res.get("results", [])
                 if res.get("skipped"):
-                    st.warning(f"Skipped (no extractable text): {', '.join(res['skipped'])}")
+                    st.warning(f"Skipped: {', '.join(res['skipped'])}")
 
-                for rec in results:
-                    pid = rec.get("patient_id") or "(no patient_id)"
-                    verdict = rec["review_status"]
-                    style = VERDICT_STYLE.get(verdict, VERDICT_STYLE["Review"])
-                    detail = rec["review_detail"]
-                    quality = rec.get("quality_score")
+        # Show results
+        for rec in st.session_state.records:
+            pid = rec.get("patient_id") or "(no patient_id)"
+            v = rec["review_status"]
+            style = VERDICT.get(v, VERDICT["Review"])
+            detail = rec["review_detail"]
 
-                    st.markdown(f"### Patient: `{pid}`")
+            st.markdown(f"### Patient: `{pid}`")
+            sub = ""
+            if detail.get("safety_rule_applied"):
+                sub = "Escalated to Block by safety rule"
+            elif detail.get("block_probability") is not None:
+                sub = f"P(Block) = {detail['block_probability']:.1%}"
+            st.markdown(f"""
+            <div class="verdict-card" style="background:{style['bg']};">
+                <div class="verdict-icon" style="color:{style['color']};">{style['icon']}</div>
+                <div>
+                    <div class="verdict-label" style="color:{style['color']};">{style['label']}</div>
+                    <div class="verdict-sub">{sub}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                    # --- Signature: verdict card ---
-                    sub = ""
-                    if detail.get("safety_rule_applied"):
-                        sub = "Escalated to Block by safety rule (P(Block) above threshold)"
-                    elif detail.get("block_probability") is not None:
-                        sub = f"P(Block) = {detail['block_probability']:.1%}"
-                    st.markdown(f"""
-                    <div class="verdict-card" style="background:{style['bg']};">
-                        <div class="verdict-icon" style="color:{style['color']};">{style['icon']}</div>
-                        <div>
-                            <div class="verdict-label" style="color:{style['color']};">{style['label']}</div>
-                            <div class="verdict-sub">{sub}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            m1, m2, m3 = st.columns(3)
+            if rec.get("quality_score") is not None:
+                m1.metric("Quality score", f"{rec['quality_score']:.2f}")
+            m2.metric("Total flags", rec["features"].get("total_flags"))
+            m3.metric("Completeness", f"{rec['features'].get('completeness_score', 0):.0%}")
 
-                    # --- Metrics row ---
-                    m1, m2, m3 = st.columns(3)
-                    if quality is not None:
-                        m1.metric("Quality score", f"{quality:.2f}")
-                    m2.metric("Total flags", rec["features"].get("total_flags"))
-                    m3.metric("Completeness", f"{rec['features'].get('completeness_score', 0):.0%}")
+            cf, cp = st.columns(2)
+            with cf:
+                st.markdown("**Validation flags**")
+                if not rec.get("flags"):
+                    st.caption("No flags raised.")
+                for fl in rec.get("flags", []):
+                    sev = fl.get("severity", "low")
+                    cls = {"high": "flag-high", "medium": "flag-medium"}.get(sev, "flag-low")
+                    st.markdown(f"<span class='{cls}'>\u25cf {fl['message']}</span>",
+                               unsafe_allow_html=True)
+            with cp:
+                st.markdown("**Class probabilities**")
+                for cls_name, p in detail["probabilities"].items():
+                    st.progress(p, text=f"{cls_name}: {p:.1%}")
 
-                    # --- Flags + class probabilities ---
-                    c_flags, c_prob = st.columns(2)
-                    with c_flags:
-                        st.markdown("**Validation flags**")
-                        flags = rec.get("flags", [])
-                        if not flags:
-                            st.caption("No flags raised.")
-                        for fl in flags:
-                            sev = fl.get("severity", "low")
-                            cls = {"high": "flag-high", "medium": "flag-medium"}.get(sev, "flag-low")
-                            st.markdown(
-                                f"<span class='{cls}'>\u25cf {fl['message']}</span>",
-                                unsafe_allow_html=True)
-                    with c_prob:
-                        st.markdown("**Class probabilities**")
-                        for cls_name, p in detail["probabilities"].items():
-                            st.progress(p, text=f"{cls_name}: {p:.1%}")
-
-                    with st.expander("Extracted data + decision drivers"):
-                        st.json({"data": rec["data"],
-                                 "decision_drivers": rec.get("decision_drivers")})
-                    st.divider()
+            with st.expander("Extracted data"):
+                st.json(rec["data"])
+            st.divider()
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  TAB 2: CHATBOX (RAG over the protocol)
+#  PAGE 3: STRUCTURED DATA
 # ════════════════════════════════════════════════════════════════════════════
-with tab_chat:
-    st.subheader("Ask the protocol")
-    st.caption("Questions are answered from the protocol text only, with the source "
-               "section and page shown for every answer.")
+elif page == "3. Structured":
+    st.header("Structured data")
+    st.caption("All extracted records in tabular form.")
 
-    if not protocol_id:
-        st.info("Load a protocol first.")
+    if not st.session_state.records:
+        st.info("No records yet. Run an extraction (page 2).")
     else:
-        pdf_for_chat = st.text_input(
-            "Protocol PDF path (for retrieval)",
-            placeholder="protocols/HeartMagic.pdf",
-            help="The same PDF you parsed; RAG reuses its index, no re-embedding.",
-        )
+        rows = []
+        for rec in st.session_state.records:
+            row = dict(rec["data"])
+            row["_review"] = rec["review_status"]
+            row["_quality"] = rec.get("quality_score")
+            row["_flags"] = rec["features"].get("total_flags")
+            rows.append(row)
+        st.dataframe(rows, use_container_width=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  PAGE 4: MONITORING
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "4. Monitoring":
+    st.header("Monitoring review")
+    st.caption("Review-status overview across all extracted records.")
+
+    if not st.session_state.records:
+        st.info("No records yet. Run an extraction (page 2).")
+    else:
+        counts = {"Clean": 0, "Review": 0, "Block": 0}
+        for rec in st.session_state.records:
+            counts[rec["review_status"]] = counts.get(rec["review_status"], 0) + 1
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("\u2713 Clean", counts["Clean"])
+        c2.metric("\u26a0 Review", counts["Review"])
+        c3.metric("\u2715 Block", counts["Block"])
+
+        st.divider()
+        for rec in st.session_state.records:
+            v = rec["review_status"]
+            style = VERDICT.get(v, VERDICT["Review"])
+            pid = rec.get("patient_id") or "(no id)"
+            st.markdown(
+                f"<span style='color:{style['color']};font-weight:600'>"
+                f"{style['icon']} {style['label']}</span> &nbsp; "
+                f"`{pid}` &nbsp; \u2014 quality "
+                f"{rec.get('quality_score', 0):.2f}, "
+                f"{rec['features'].get('total_flags')} flags",
+                unsafe_allow_html=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  PAGE 5: CHATBOX
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "5. Chatbox":
+    st.header("Ask the protocol")
+    st.caption("Questions are answered from the protocol text only, with the "
+               "source section and page shown.")
+
+    if not st.session_state.pdf_path:
+        st.info("Load a protocol first (page 1).")
+    else:
+        st.caption(f"Querying: `{st.session_state.pdf_path}`")
         question = st.text_input("Your question",
                                  placeholder="Which patients are excluded?")
-        if st.button("Ask", type="primary", disabled=not (question and pdf_for_chat)):
-            with st.spinner("Retrieving relevant protocol sections..."):
-                res, cerr = api_post("/protocol/ask", {
-                    "pdf_path": pdf_for_chat,
+        if st.button("Ask", type="primary", disabled=not question):
+            with st.spinner("Retrieving and answering..."):
+                res, err = api_post("/protocol/ask", {
+                    "pdf_path": st.session_state.pdf_path,
                     "question": question,
                     "top_k": 4,
                 })
-            if cerr:
-                st.error(f"Query failed: {cerr}")
+            if err:
+                st.error(f"Query failed: {err}")
             else:
-                st.markdown("**Relevant protocol passages**")
-                for i, s in enumerate(res.get("sources", []), 1):
-                    st.markdown(f"**Source {i}** \u2014 *{s['section']}, page {s['page']}*")
-                    st.caption(s["text"])
-                    st.divider()
+                st.markdown("**Answer**")
+                st.write(res.get("answer", ""))
+                with st.expander("Sources"):
+                    for i, s in enumerate(res.get("sources", []), 1):
+                        st.markdown(f"**Source {i}** \u2014 *{s['section']}, page {s['page']}*")
+                        st.caption(s["text"])
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  TAB 3: SCHEMA
+#  PAGE 6: EXPORT
 # ════════════════════════════════════════════════════════════════════════════
-with tab_schema:
-    st.subheader("Study schema")
-    if not protocol_id:
-        st.info("Load a protocol first.")
+elif page == "6. Export":
+    st.header("Export")
+    st.caption("Download structured, review-ready records as CSV.")
+
+    if not st.session_state.records:
+        st.info("No records yet. Run an extraction (page 2).")
     else:
-        schema, serr = api_get("/protocol/schema", params={"protocol_id": protocol_id})
-        if serr:
-            st.error(f"Could not load schema: {serr}")
-        else:
-            c1, c2 = st.columns(2)
-            c1.metric("Study", schema.get("study_name", "\u2014"))
-            c2.metric("Indication", schema.get("indication", "\u2014"))
+        rows = []
+        for rec in st.session_state.records:
+            row = dict(rec["data"])
+            row["review_status"] = rec["review_status"]
+            row["quality_score"] = rec.get("quality_score")
+            row["total_flags"] = rec["features"].get("total_flags")
+            rows.append(row)
 
-            fc = schema.get("field_classification", {})
-            st.markdown("**Field classification (CDISC core)**")
-            f1, f2, f3 = st.columns(3)
-            f1.markdown(f"**Required**\n\n" + "\n".join(f"- {x}" for x in fc.get("required", [])))
-            f2.markdown(f"**Expected**\n\n" + "\n".join(f"- {x}" for x in fc.get("expected", [])))
-            f3.markdown(f"**Permissible**\n\n" + "\n".join(f"- {x}" for x in fc.get("permissible", [])))
+        # Build CSV
+        all_keys = []
+        for r in rows:
+            for k in r:
+                if k not in all_keys:
+                    all_keys.append(k)
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=all_keys)
+        writer.writeheader()
+        writer.writerows(rows)
 
-            with st.expander("Validation ranges"):
-                st.json(schema.get("validation_ranges", {}))
-            with st.expander("Eligibility criteria"):
-                st.json(schema.get("eligibility_criteria", {}))
-            with st.expander("Full schema JSON"):
-                st.json(schema)
+        st.dataframe(rows, use_container_width=True)
+        st.download_button("Download CSV", buf.getvalue(),
+                          file_name="clinorigin_records.csv", mime="text/csv",
+                          type="primary")

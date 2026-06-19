@@ -1,4 +1,7 @@
-from protocol_parser import get_schema
+from pathlib import Path
+from backend.protocol_parser import get_schema
 
-schema = get_schema("Prot_SAP_000.pdf")
+# Pfad relativ zu DIESER Datei, egal von wo gestartet wird
+pdf = Path(__file__).parent / "protocols" / "Prot_SAP_000.pdf"
+schema = get_schema(str(pdf))
 print(schema)

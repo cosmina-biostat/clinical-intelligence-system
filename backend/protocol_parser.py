@@ -212,12 +212,15 @@ Respond ONLY with JSON in this format:
 
 
 def get_schema(pdf_path: str, cache_path: str = None) -> dict:
-    """Returns the StudySchema. Uses cached JSON if available (saves tokens)."""
-
+   
     if cache_path is None:
-        cache_path = Path(pdf_path).stem + "_schema.json"
+        schema_dir = Path(__file__).parent / "schema"
+        schema_dir.mkdir(exist_ok=True)
+        cache_path = schema_dir / (Path(pdf_path).stem + "_schema.json")
 
-    if os.path.exists(cache_path):
+    cache_path = Path(cache_path)
+    
+    if cache_path.exists():
         with open(cache_path, "r", encoding="utf-8") as f:
             print(f"Schema loaded from cache: {cache_path}")
             return json.load(f)
