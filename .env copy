@@ -1,0 +1,19 @@
+PROJECT_ROOT=C:\Users\manis\Ginger_Gradient\clinical-intelligence-system
+LOG_DIR=logs
+DATASET_DIR=dataset
+MODEL_DIR=model_dir
+
+DATASET_NAME=C:\Users\manis\Ginger_Gradient\clinical-intelligence-system\data\conversion_predictors_of_clinically_isolated_syndrome_to_multiple_sclerosis.csv
+LOG_NAME=app.log
+MODEL_NAME=ms_conversion_prediction_model.joblib
+
+TARGET_COL=group
+TEST_SIZE=0.2
+RANDOM_STATE=42
+
+API_URL=http://127.0.0.1:8000/conversion_predictors_of_clinically_isolated_syndrome_to_multiple_sclerosis
+
+# Model settings
+DEFAULT_MODEL=xgb
+ANOMALY_THRESHOLD=0.65
+RAG_TOP_K=3
