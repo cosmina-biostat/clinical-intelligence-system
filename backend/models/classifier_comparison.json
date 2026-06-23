@@ -1,0 +1,36 @@
+{
+  "LogisticRegression": {
+    "train_f1": 0.8872,
+    "test_f1": 0.887,
+    "overfit_gap": 0.0002,
+    "block_recall": 0.918,
+    "cv_f1_mean": 0.8817,
+    "cv_f1_std": 0.0209
+  },
+  "RandomForest": {
+    "train_f1": 0.9393,
+    "test_f1": 0.867,
+    "overfit_gap": 0.0723,
+    "block_recall": 0.8361,
+    "cv_f1_mean": 0.87,
+    "cv_f1_std": 0.0182
+  },
+  "XGBoost": {
+    "train_f1": 0.9856,
+    "test_f1": 0.8676,
+    "overfit_gap": 0.118,
+    "block_recall": 0.8197,
+    "cv_f1_mean": 0.882,
+    "cv_f1_std": 0.0182
+  },
+  "LightGBM": {
+    "train_f1": 0.9761,
+    "test_f1": 0.8736,
+    "overfit_gap": 0.1025,
+    "block_recall": 0.8361,
+    "cv_f1_mean": 0.8704,
+    "cv_f1_std": 0.0191
+  },
+  "_best": "XGBoost",
+  "_selection_criterion": "cv_f1_mean (tie: cv_std, block_recall)"
+}

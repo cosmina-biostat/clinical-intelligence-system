@@ -1,0 +1,231 @@
+{
+  "study_name": "EORTC-1325-MG / KEYNOTE 054",
+  "indication": "Stage III melanoma",
+  "study_type": "Randomized, double-blind, placebo-controlled, multicenter, two-part immunotherapy trial (pembrolizumab vs placebo)",
+  "protocol_version": "EORTC v7.0 / MK-3475-054-03, February 28, 2018",
+  "visit_structure": "Part 1: blinded treatment phase until first disease recurrence; Part 2: cross-over or re-challenge with pembrolizumab after unblinding at first recurrence. EOT visit at 30 days +/- 2 weeks after discontinuation. Imaging every 12 weeks in Part 2. Data entry required within 5 days of each patient visit.",
+  "field_definitions": {
+    "institution_number": "Unique identifier for the participating institution",
+    "protocol_number": "Protocol identifier (1325)",
+    "step_number": "Registration step number (Step 1 = registration, Step 2 = randomization)",
+    "pd_l1_status": "Result of PD-L1 expression test",
+    "eligibility_confirmed": "Confirmation that all eligibility criteria have been checked one by one",
+    "stratification_factors": "Factors used for minimization-based randomization",
+    "informed_consent_date": "Date of written informed consent (day/month/year)",
+    "stage": "TNM stage of disease",
+    "ecog_status": "ECOG performance status",
+    "weight": "Patient weight (kg)",
+    "pulse": "Pulse rate",
+    "systolic_bp": "Systolic blood pressure",
+    "diastolic_bp": "Diastolic blood pressure",
+    "temperature": "Body temperature",
+    "adverse_events": "All adverse events graded per NCI CTCAE v4.0",
+    "concomitant_medications": "All concomitant medications recorded at each visit",
+    "wbc": "White blood cell count (complete blood count)",
+    "anc": "Absolute neutrophil count",
+    "rbc": "Red blood cell count",
+    "hemoglobin": "Hemoglobin (Hgb)",
+    "hematocrit": "Hematocrit (Hct)",
+    "platelets": "Platelet count",
+    "creatinine": "Serum creatinine",
+    "bun": "Urea or BUN",
+    "total_bilirubin": "Total bilirubin",
+    "ast": "Aspartate aminotransferase (AST)",
+    "alt": "Alanine aminotransferase (ALT)",
+    "alp": "Alkaline phosphatase",
+    "ldh": "Lactate dehydrogenase (LDH)",
+    "total_protein": "Total protein",
+    "potassium": "Potassium (K)",
+    "sodium": "Sodium (Na)",
+    "calcium": "Calcium (Ca)",
+    "albumin": "Albumin",
+    "glucose": "Glucose",
+    "crp": "C-reactive protein (CRP)",
+    "tsh": "Thyroid stimulating hormone (TSH)",
+    "free_t3": "Free T3 (added if TSH elevated)",
+    "free_t4": "Free T4 (added if TSH elevated)",
+    "pregnancy_test": "Pregnancy test performed at EOT visit",
+    "urine_analysis": "Urine dipstick (specific gravity, pH, proteins, glucose, blood); microscopic if needed",
+    "hrqol": "Health-related quality of life assessed via EORTC QLQ-C30 v3 and EQ-5D-3L questionnaires"
+  },
+  "field_classification": {
+    "required": [
+      "patient_id",
+      "age",
+      "sex",
+      "eligibility_confirmed",
+      "stage"
+    ],
+    "expected": [
+      "ecog_status",
+      "weight",
+      "pulse",
+      "systolic_bp",
+      "diastolic_bp",
+      "temperature",
+      "adverse_events",
+      "concomitant_medications",
+      "wbc",
+      "anc",
+      "rbc",
+      "hemoglobin",
+      "hematocrit",
+      "platelets",
+      "creatinine",
+      "bun",
+      "total_bilirubin",
+      "ast",
+      "alt",
+      "alp",
+      "ldh",
+      "total_protein",
+      "potassium",
+      "sodium",
+      "calcium",
+      "albumin",
+      "glucose",
+      "crp",
+      "tsh",
+      "free_t3",
+      "free_t4",
+      "pd_l1_status",
+      "pregnancy_test"
+    ],
+    "permissible": [
+      "free_t3",
+      "free_t4",
+      "urine_analysis",
+      "hrqol",
+      "stratification_factors",
+      "informed_consent_date"
+    ]
+  },
+  "validation_rules": {
+    "data_entry_window": "All data must be entered in the eCRF within 5 days of each patient visit",
+    "recurrence_data_entry": "Upon first recurrence, all pending data must be entered within 1 business day or before site unblinding",
+    "sae_reporting": "All SAEs/ECIs must be reported to EORTC within 24 hours of the event",
+    "sar_reporting": "SARs for patients on investigator's choice of treatment must be reported to the MAH of the administered drug",
+    "ae_grading": "All AEs graded using NCI CTCAE v4.0",
+    "dili_eci": "Drug Induced Liver Injury (DILI): AST or ALT >= 3x ULN with concurrent total bilirubin >= 2x ULN and alkaline phosphatase < 2x ULN — report as ECI",
+    "pneumonitis_eci": "Pneumonitis/interstitial lung disease: report as ECI if >= Grade 2",
+    "nephritis_eci": "Nephritis/renal failure: report as ECI if >= Grade 2",
+    "colitis_eci": "Colitis and related GI events: report as ECI if >= Grade 2 or any grade resulting in dose modification or systemic steroids",
+    "endocrine_eci": "Endocrine events: report as ECI if >= Grade 3 or >= Grade 2 resulting in dose modification or systemic steroids",
+    "hematologic_eci": "Hematologic events: report as ECI if >= Grade 3 or any grade resulting in dose modification or systemic steroids",
+    "hepatic_eci": "Hepatic events: report as ECI if >= Grade 2 or any grade resulting in dose modification or systemic steroids",
+    "neurologic_eci": "Neurologic events (autoimmune neuropathy, Guillain-Barre, demyelinating polyneuropathy, myasthenic syndrome): report as ECI regardless of grade",
+    "ocular_eci": "Uveitis/Iritis: report as ECI if >= Grade 2 or any grade resulting in dose modification or systemic steroids",
+    "skin_severe_eci": "Dermatitis exfoliative, erythema multiforme, Stevens-Johnson syndrome, toxic epidermal necrolysis: report as ECI regardless of grade",
+    "skin_grade3_eci": "Pruritus, rash, generalized rash, maculo-papular rash: report as ECI if >= Grade 3",
+    "infusion_reaction_eci": "Allergic reaction, anaphylaxis, cytokine release syndrome, serum sickness, infusion reactions: report as ECI regardless of grade",
+    "other_eci": "Myocarditis, pancreatitis, pericarditis: report as ECI regardless of grade; any other Grade 3 immune-related event",
+    "creatinine_eci": "Creatinine elevations: report as ECI if >= Grade 3 or any grade resulting in dose modification or systemic steroids",
+    "tsh_reflex": "If TSH is elevated, add free T3 and free T4 testing",
+    "imaging_baseline": "All baseline evaluations must be performed no more than 4 weeks before beginning of treatment",
+    "measurable_lesion": "Single measurable lesion >= 10 mm in two dimensions; multiple measurable lesions >= 10 mm in at least one dimension on spiral CT",
+    "equipment_calibration": "All critical equipment (laboratory, imaging, drug administration) must be suitably calibrated and maintained; documentation retained as source documentation"
+  },
+  "validation_ranges": {
+    "ast": {
+      "xULN": {
+        "min": null,
+        "max": null
+      },
+      "note": "ECI threshold: >= 3x ULN concurrent with total bilirubin >= 2x ULN and ALP < 2x ULN (DILI)"
+    },
+    "alt": {
+      "xULN": {
+        "min": null,
+        "max": null
+      },
+      "note": "ECI threshold: >= 3x ULN concurrent with total bilirubin >= 2x ULN and ALP < 2x ULN (DILI)"
+    },
+    "total_bilirubin": {
+      "xULN": {
+        "min": null,
+        "max": null
+      },
+      "note": "ECI threshold: >= 2x ULN concurrent with AST or ALT >= 3x ULN and ALP < 2x ULN (DILI)"
+    },
+    "alp": {
+      "xULN": {
+        "min": null,
+        "max": null
+      },
+      "note": "DILI criterion: ALP < 2x ULN required for DILI ECI classification"
+    }
+  },
+  "data_types": {
+    "patient_id": "alphanumeric identifier",
+    "institution_number": "numeric",
+    "protocol_number": "numeric (1325)",
+    "step_number": "integer",
+    "pd_l1_status": "categorical (positive/negative/result value)",
+    "eligibility_confirmed": "boolean (yes/no per criterion)",
+    "stage": "categorical (TNM stage)",
+    "ecog_status": "ordinal integer",
+    "weight": "numeric (continuous)",
+    "pulse": "numeric (continuous)",
+    "systolic_bp": "numeric (continuous)",
+    "diastolic_bp": "numeric (continuous)",
+    "temperature": "numeric (continuous)",
+    "adverse_events": "structured text with CTCAE grade (integer 1-5)",
+    "concomitant_medications": "structured text",
+    "wbc": "numeric (continuous)",
+    "anc": "numeric (continuous)",
+    "rbc": "numeric (continuous)",
+    "hemoglobin": "numeric (continuous)",
+    "hematocrit": "numeric (continuous)",
+    "platelets": "numeric (continuous)",
+    "creatinine": "numeric (continuous)",
+    "bun": "numeric (continuous)",
+    "total_bilirubin": "numeric (continuous)",
+    "ast": "numeric (continuous)",
+    "alt": "numeric (continuous)",
+    "alp": "numeric (continuous)",
+    "ldh": "numeric (continuous)",
+    "total_protein": "numeric (continuous)",
+    "potassium": "numeric (continuous)",
+    "sodium": "numeric (continuous)",
+    "calcium": "numeric (continuous)",
+    "albumin": "numeric (continuous)",
+    "glucose": "numeric (continuous)",
+    "crp": "numeric (continuous)",
+    "tsh": "numeric (continuous)",
+    "free_t3": "numeric (continuous)",
+    "free_t4": "numeric (continuous)",
+    "pregnancy_test": "categorical (positive/negative)",
+    "informed_consent_date": "date (day/month/year)",
+    "hrqol": "ordinal scale scores (EORTC QLQ-C30, EQ-5D-3L)"
+  },
+  "eligibility_criteria": {
+    "inclusion": [
+      "Patient must sign informed consent for tumor testing prior to registration (Step 1)",
+      "All criteria listed in protocol section 3.1 must be fulfilled",
+      "PD-L1 expression test result must be available at randomization",
+      "TNM stage III melanoma confirmed",
+      "Registration only accepted from authorized investigators"
+    ],
+    "exclusion": [
+      "Patients not fulfilling all criteria in protocol section 3.1 are not eligible for registration",
+      "Patients not eligible for registration will not be assigned a patient identifier",
+      "Registration/randomization from centers not on the authorization list will not be accepted"
+    ]
+  },
+  "medication_guidelines": {
+    "study_medication": "Pembrolizumab (anti-PD-1) administered intravenously; blinded vs placebo in Part 1. In Part 2 (after first recurrence and unblinding), cross-over or re-challenge with pembrolizumab. Treatment duration up to 1 year in Part 1 (with possible stop at 1 year at investigator discretion for local recurrence). Imaging follow-up every 12 weeks in Part 2.",
+    "prohibited": [
+      "New anticancer treatment initiated during blinded phase may affect censoring of RFS endpoint",
+      "Proxy completion of QoL questionnaires is not allowed unless specifically permitted by the protocol"
+    ],
+    "allowed": [
+      "Corticosteroids (e.g., prednisone 1-2 mg/kg/day or equivalent) for management of immune-related ECIs as per protocol guidelines",
+      "Topical glucocorticosteroids (e.g., betamethasone 0.1% cream, hydrocortisone 1%) for Grade 2 skin ECIs",
+      "Oral anti-pruritics (e.g., diphenhydramine HCl, hydroxyzine HCl) for skin ECIs",
+      "IV fluids, antihistamines, NSAIDs, acetaminophen, narcotics, oxygen, pressors, epinephrine for infusion reactions",
+      "IVIG or other immunosuppressive therapies per local guidelines for Grade 3-4 neurologic ECIs",
+      "Radiotherapy allowed before Part 2 per protocol (as noted in v7.0 changes)",
+      "Investigator's choice of treatment for patients not receiving pembrolizumab in Part 2 (SARs to be reported to MAH)"
+    ]
+  }
+}

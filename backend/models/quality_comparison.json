@@ -1,0 +1,31 @@
+{
+  "Ridge": {
+    "train_r2": 0.9215,
+    "test_r2": 0.9331,
+    "overfit_gap": -0.0116,
+    "test_mae": 0.0464,
+    "test_rmse": 0.0625,
+    "cv_r2_mean": 0.9215,
+    "cv_r2_std": 0.0107
+  },
+  "RandomForest": {
+    "train_r2": 0.9615,
+    "test_r2": 0.9255,
+    "overfit_gap": 0.0361,
+    "test_mae": 0.0503,
+    "test_rmse": 0.066,
+    "cv_r2_mean": 0.9204,
+    "cv_r2_std": 0.0067
+  },
+  "XGBoost": {
+    "train_r2": 0.9757,
+    "test_r2": 0.934,
+    "overfit_gap": 0.0417,
+    "test_mae": 0.0472,
+    "test_rmse": 0.0621,
+    "cv_r2_mean": 0.9303,
+    "cv_r2_std": 0.0057
+  },
+  "_best": "XGBoost",
+  "_selection_criterion": "cv_r2_mean (tie: cv_std)"
+}
