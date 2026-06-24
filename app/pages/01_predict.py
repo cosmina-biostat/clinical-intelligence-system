@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
+import joblib
 from pathlib import Path
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
@@ -59,6 +60,9 @@ def _clean(df):
 
 @st.cache_resource(show_spinner=False)
 def build_pipeline(_df):
+    saved = Path("models/saved/lgbm_pipeline_cardio.pkl")
+    if saved.exists():
+        return joblib.load(saved)
     X, y = _df[FEATURES], _df["cardio"]
     X_tr, X_te, y_tr, y_te = train_test_split(
         X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE)

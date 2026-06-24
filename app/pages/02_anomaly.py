@@ -56,6 +56,10 @@ def _clean(df):
 
 @st.cache_resource(show_spinner=False)
 def train_anomaly(_df):
+    saved = Path("models/saved/iso_forest_cardio.pkl")
+    if saved.exists():
+        import joblib
+        return joblib.load(saved)
     iso = IsolationForest(n_estimators=200, contamination=0.02, random_state=RANDOM_STATE)
     iso.fit(_df[FEATURES])
     return iso

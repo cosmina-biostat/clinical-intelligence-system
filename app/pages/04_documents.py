@@ -126,7 +126,7 @@ with tab_qa:
             )
             client   = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             response = client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=800,
                 messages=[{"role": "user", "content":
                     f"You are a clinical research assistant.\n\n"

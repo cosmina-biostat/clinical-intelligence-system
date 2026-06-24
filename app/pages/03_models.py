@@ -70,6 +70,13 @@ def _clean(df):
 
 @st.cache_data(show_spinner=False)
 def run_comparison(_df):
+    saved = Path("reports/model_comparison.csv")
+    if saved.exists():
+        return pd.read_csv(saved).rename(columns={
+            "roc_auc": "ROC-AUC", "f1": "F1",
+            "precision": "Precision", "recall": "Recall", "accuracy": "Accuracy",
+            "classifier": "Classifier"
+        })[["Classifier","ROC-AUC","F1","Precision","Recall","Accuracy"]]
     X, y = _df[FEATURES], _df["cardio"]
     X_tr, X_te, y_tr, y_te = train_test_split(
         X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE)
