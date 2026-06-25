@@ -136,7 +136,7 @@ with tab1:
     c2.caption("Model: LightGBM trained on 70k cardio records. **Not** a clinical diagnostic tool.")
 
 with tab2:
-    st.subheader("Why this prediction? (SHAP)")
+    st.subheader("Why this score? See which factors matter most for this patient.")
     x  = pipe.named_steps["prep"].transform(row_df[FEATURES])
     sv = explainer.shap_values(x)
     sv = sv[1] if isinstance(sv, list) else sv
