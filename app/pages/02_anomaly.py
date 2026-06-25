@@ -83,7 +83,7 @@ m1.metric("Isolation Forest score", f"{score:.4f}",
           help="Higher = more typical. Negative = outlier territory.")
 m2.metric("Status", "⚠️ Anomalous" if flag == -1 else "✅ Normal")
 zone = "Anomalous (< 0)" if score < 0 else ("Borderline (≈ 0)" if score < 0.05 else "Normal (> 0)")
-m3.metric("Score zone", zone, help="Boundary is 0.0 — negative = flagged, positive = normal")
+m3.metric("Risk zone", zone, help="Boundary is 0.0 — negative = flagged, positive = normal")
 
 if flag == -1:
     st.warning(
