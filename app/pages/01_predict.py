@@ -1,6 +1,7 @@
 """
 Risk Prediction — Cardiovascular domain
-Trains LightGBM inline (cached) on the cardio dataset; no pre-saved .pkl required.
+Loads pre-trained LightGBM pipeline from models/saved/.
+Falls back to inline training only if the .pkl is missing AND data is available.
 """
 import numpy as np
 import pandas as pd
@@ -8,12 +9,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import joblib
 from pathlib import Path
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
 import shap
-from lightgbm import LGBMClassifier
 
 st.set_page_config(page_title="Risk Prediction", page_icon="🫀", layout="wide")
 
@@ -22,53 +18,32 @@ FEATURES = ["age_years", "gender", "height", "weight", "bmi",
             "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
 NUMERIC  = ["age_years", "height", "weight", "bmi", "ap_hi", "ap_lo"]
 CODED    = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
-LGBM_PARAMS = dict(n_estimators=423, max_depth=7, learning_rate=0.02,
-                   num_leaves=15, subsample=0.66, colsample_bytree=0.80,
-                   reg_lambda=1.2, random_state=RANDOM_STATE, verbose=-1)
 
-
-@st.cache_data(show_spinner=False)
-def load_data():
-    proc = Path("data/processed/cardio_clean.csv")
-    raw  = Path("data/raw/cardio_train.csv")
-    if proc.exists():
-        return pd.read_csv(proc)
-    if raw.exists():
-        df = pd.read_csv(raw, sep=";")
-        if df.shape[1] == 1:
-            df = pd.read_csv(raw, sep=",")
-        return _clean(df)
-    return None
-
-
-def _clean(df):
-    if "id" in df.columns:
-        df = df.drop(columns="id")
-    df = df.drop_duplicates().reset_index(drop=True)
-    if "age_years" not in df.columns:
-        df["age_years"] = (df["age"] / 365.25).round(1)
-    if "bmi" not in df.columns:
-        df["bmi"] = (df["weight"] / (df["height"] / 100) ** 2).round(1)
-    if "age" in df.columns:
-        df = df.drop(columns="age")
-    return df[
-        df["ap_hi"].between(60, 250) & df["ap_lo"].between(40, 200) &
-        (df["ap_hi"] >= df["ap_lo"]) & df["height"].between(120, 220) &
-        df["weight"].between(30, 200) & df["bmi"].between(10, 60)
-    ].copy()
+MODELS_DIR = Path("models/saved")
 
 
 @st.cache_resource(show_spinner=False)
-def build_pipeline(_df):
-    saved = Path("models/saved/lgbm_pipeline_cardio.pkl")
-    if saved.exists():
-        return joblib.load(saved)
-    X, y = _df[FEATURES], _df["cardio"]
-    X_tr, X_te, y_tr, y_te = train_test_split(
-        X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE)
-    prep = ColumnTransformer([("num", StandardScaler(), NUMERIC),
-                              ("pass", "passthrough", CODED)])
-    pipe = Pipeline([("prep", prep), ("model", LGBMClassifier(**LGBM_PARAMS))])
+def load_pipeline():
+    """Load pre-trained pipeline from disk."""
+    pkl = MODELS_DIR / "lgbm_pipeline_cardio.pkl"
+    if pkl.exists():
+        return joblib.load(pkl)
+    # fallback: train inline if data is available
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from sklearn.model_selection import train_test_split
+    from lightgbm import LGBMClassifier
+    df = _load_data_optional()
+    if df is None:
+        return None
+    X, y = df[FEATURES], df["cardio"]
+    X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE)
+    prep = ColumnTransformer([("num", StandardScaler(), NUMERIC), ("pass", "passthrough", CODED)])
+    pipe = Pipeline([("prep", prep), ("model", LGBMClassifier(
+        n_estimators=423, max_depth=7, learning_rate=0.02, num_leaves=15,
+        subsample=0.66, colsample_bytree=0.80, reg_lambda=1.2,
+        random_state=RANDOM_STATE, verbose=-1))])
     pipe.fit(X_tr, y_tr)
     return pipe
 
@@ -78,7 +53,35 @@ def get_explainer(_pipe):
     return shap.TreeExplainer(_pipe.named_steps["model"])
 
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+def _load_data_optional():
+    """Returns dataframe if data files exist, else None — never errors."""
+    proc = Path("data/processed/cardio_clean.csv")
+    raw  = Path("data/raw/cardio_train.csv")
+    try:
+        if proc.exists():
+            return pd.read_csv(proc)
+        if raw.exists():
+            df = pd.read_csv(raw, sep=";")
+            if df.shape[1] == 1:
+                df = pd.read_csv(raw, sep=",")
+            return _clean(df)
+    except Exception:
+        pass
+    return None
+
+
+def _clean(df):
+    if "id" in df.columns: df = df.drop(columns="id")
+    df = df.drop_duplicates().reset_index(drop=True)
+    if "age_years" not in df.columns: df["age_years"] = (df["age"] / 365.25).round(1)
+    if "bmi" not in df.columns: df["bmi"] = (df["weight"] / (df["height"] / 100) ** 2).round(1)
+    if "age" in df.columns: df = df.drop(columns="age")
+    return df[df["ap_hi"].between(60,250) & df["ap_lo"].between(40,200) &
+              (df["ap_hi"] >= df["ap_lo"]) & df["height"].between(120,220) &
+              df["weight"].between(30,200) & df["bmi"].between(10,60)].copy()
+
+
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 st.title("🫀 Patient Risk Prediction")
 st.caption("Cardiovascular disease · LightGBM + SHAP")
 
@@ -108,15 +111,15 @@ row_df = pd.DataFrame([{
     "smoke": int(smoke), "alco": int(alco), "active": int(active),
 }])
 
-# ── Load & train ─────────────────────────────────────────────────────────────
-df = load_data()
-if df is None:
-    st.error("Data not found. Place `cardio_train.csv` in `data/raw/` or the cleaned version in `data/processed/`.")
+# ── Load model ────────────────────────────────────────────────────────────────
+with st.spinner("Loading model…"):
+    pipe = load_pipeline()
+
+if pipe is None:
+    st.error("Model not found. The pre-trained model file is missing from models/saved/.")
     st.stop()
 
-with st.spinner("Loading model (first run only — this takes ~20 s)…"):
-    pipe      = build_pipeline(df)
-    explainer = get_explainer(pipe)
+explainer = get_explainer(pipe)
 
 # ── Prediction ────────────────────────────────────────────────────────────────
 prob  = float(pipe.predict_proba(row_df[FEATURES])[:, 1][0])
@@ -130,8 +133,7 @@ with tab1:
     c1.metric("Predicted CVD risk", f"{prob * 100:.1f}%")
     c1.markdown(f"<h3 style='color:{color}'>{band} risk</h3>", unsafe_allow_html=True)
     c2.progress(prob)
-    c2.caption("Model: LightGBM trained on 70k cardio records. "
-               "**Not** a clinical diagnostic tool.")
+    c2.caption("Model: LightGBM trained on 70k cardio records. **Not** a clinical diagnostic tool.")
 
 with tab2:
     st.subheader("Why this prediction? (SHAP)")
@@ -139,11 +141,9 @@ with tab2:
     sv = explainer.shap_values(x)
     sv = sv[1] if isinstance(sv, list) else sv
     sv = np.array(sv).ravel()
-
     order  = np.argsort(np.abs(sv))[::-1]
     names  = [FEATURES[i] for i in order]
     values = sv[order]
-
     fig, ax = plt.subplots(figsize=(8, 5))
     colors  = ["#c62828" if v > 0 else "#2e7d32" for v in values]
     ax.barh(names[::-1], values[::-1], color=colors[::-1])
@@ -151,9 +151,7 @@ with tab2:
     ax.set_xlabel("SHAP value  (red = raises risk · green = lowers risk)")
     ax.set_title("Feature contributions for this patient")
     st.pyplot(fig)
-    st.caption("Bar length = how strongly each feature drove the prediction for **this specific patient**.")
+    st.caption("Bar length = how strongly each feature drove the prediction for this specific patient.")
 
-# ── Other domains placeholder ─────────────────────────────────────────────────
 with st.expander("Other disease domains (coming soon)"):
-    st.info("MS and Melanoma models are in development. The cardiovascular model above uses "
-            "the complete 70 k-record Kaggle dataset with tuned LightGBM parameters.")
+    st.info("MS and Melanoma models are in development. The cardiovascular model uses the complete 70k-record Kaggle dataset.")

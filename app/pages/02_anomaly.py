@@ -1,142 +1,118 @@
 """
-Anomaly Detection — population monitoring view.
-Isolation Forest is trained inline on the cardio cohort (cached).
+Anomaly Detection — single-patient checker.
+Loads pre-trained Isolation Forest from models/saved/.
+No raw data required — works fully from the saved model.
 """
-import pandas as pd
 import numpy as np
-import plotly.express as px
+import pandas as pd
 import streamlit as st
+import joblib
 from pathlib import Path
-from sklearn.ensemble import IsolationForest
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
-from lightgbm import LGBMClassifier
 
 st.set_page_config(page_title="Anomaly Monitor", page_icon="🔍", layout="wide")
 
-RANDOM_STATE = 42
 FEATURES = ["age_years", "gender", "height", "weight", "bmi",
             "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
-NUMERIC  = ["age_years", "height", "weight", "bmi", "ap_hi", "ap_lo"]
-CODED    = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
-
-
-@st.cache_data(show_spinner=False)
-def load_data():
-    proc = Path("data/processed/cardio_clean.csv")
-    raw  = Path("data/raw/cardio_train.csv")
-    if proc.exists():
-        return pd.read_csv(proc)
-    if raw.exists():
-        df = pd.read_csv(raw, sep=";")
-        if df.shape[1] == 1:
-            df = pd.read_csv(raw, sep=",")
-        return _clean(df)
-    return None
-
-
-def _clean(df):
-    if "id" in df.columns:
-        df = df.drop(columns="id")
-    df = df.drop_duplicates().reset_index(drop=True)
-    if "age_years" not in df.columns:
-        df["age_years"] = (df["age"] / 365.25).round(1)
-    if "bmi" not in df.columns:
-        df["bmi"] = (df["weight"] / (df["height"] / 100) ** 2).round(1)
-    if "age" in df.columns:
-        df = df.drop(columns="age")
-    return df[
-        df["ap_hi"].between(60, 250) & df["ap_lo"].between(40, 200) &
-        (df["ap_hi"] >= df["ap_lo"]) & df["height"].between(120, 220) &
-        df["weight"].between(30, 200) & df["bmi"].between(10, 60)
-    ].copy()
+MODELS_DIR = Path("models/saved")
 
 
 @st.cache_resource(show_spinner=False)
-def train_anomaly(_df):
-    saved = Path("models/saved/iso_forest_cardio.pkl")
-    if saved.exists():
-        import joblib
-        return joblib.load(saved)
-    iso = IsolationForest(n_estimators=200, contamination=0.02, random_state=RANDOM_STATE)
-    iso.fit(_df[FEATURES])
-    return iso
+def load_iso():
+    pkl = MODELS_DIR / "iso_forest_cardio.pkl"
+    if pkl.exists():
+        return joblib.load(pkl)
+    return None
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-st.title("🔍 Anomaly Detection — Patient Review Queue")
-st.caption("Isolation Forest · Cardiovascular cohort · 70k records")
+st.title("🔍 Anomaly Detection — Patient Profile Checker")
+st.caption("Isolation Forest · Trained on 68,595 cardiovascular records")
 
-df = load_data()
-if df is None:
-    st.error("Data not found. Place `cardio_train.csv` in `data/raw/`.")
+iso = load_iso()
+if iso is None:
+    st.error("Anomaly model not found. The pre-trained model file is missing from models/saved/.")
     st.stop()
 
-with st.spinner("Training Isolation Forest (first run only)…"):
-    iso = train_anomaly(df)
-
-scores    = iso.decision_function(df[FEATURES])
-threshold = st.sidebar.slider("Anomaly threshold", -0.20, 0.20, -0.05, 0.01,
-                               help="Lower = stricter. Records below threshold are flagged.")
-
-df_view            = df.copy()
-df_view["iso_score"] = scores.round(4)
-df_view["flagged"]   = scores < threshold
-flagged             = df_view[df_view["flagged"]].sort_values("iso_score")
-
-# ── Metrics ───────────────────────────────────────────────────────────────────
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total patients", f"{len(df_view):,}")
-m2.metric("Flagged", f"{len(flagged):,}")
-m3.metric("Flag rate", f"{len(flagged) / len(df_view) * 100:.2f}%")
-m4.metric("Threshold", f"{threshold:.2f}")
+st.markdown("""
+Enter a patient's details below to check whether their profile is **typical**
+for the training cohort or **anomalous** — flagged for clinical review.
+""")
 
 st.divider()
 
-# ── Score distribution ────────────────────────────────────────────────────────
-col1, col2 = st.columns([2, 1])
+# ── Patient input ─────────────────────────────────────────────────────────────
+st.subheader("Patient details")
+c1, c2, c3 = st.columns(3)
 
-with col1:
-    st.subheader("Isolation Forest score distribution")
-    fig = px.histogram(df_view, x="iso_score", nbins=80,
-                       color_discrete_sequence=["#1565c0"],
-                       labels={"iso_score": "Isolation Forest score"})
-    fig.add_vline(x=threshold, line_dash="dash", line_color="#c62828",
-                  annotation_text=f"Threshold {threshold}", annotation_position="top right")
-    fig.update_layout(height=320, margin=dict(t=30, b=10))
-    st.plotly_chart(fig, use_container_width=True)
+with c1:
+    age    = st.slider("Age (years)", 20, 90, 50)
+    sex    = st.selectbox("Sex", ["Female", "Male"])
+    height = st.slider("Height (cm)", 130, 210, 165)
+    weight = st.slider("Weight (kg)", 35, 180, 70)
 
-with col2:
-    st.subheader("Flagged vs normal")
-    counts = df_view["flagged"].value_counts().rename({False: "Normal", True: "Flagged"})
-    fig2   = px.pie(values=counts.values, names=counts.index,
-                    color_discrete_map={"Normal": "#2e7d32", "Flagged": "#c62828"})
-    fig2.update_layout(height=320, margin=dict(t=30, b=10))
-    st.plotly_chart(fig2, use_container_width=True)
+with c2:
+    ap_hi  = st.slider("Systolic BP", 80, 220, 120)
+    ap_lo  = st.slider("Diastolic BP", 50, 140, 80)
+    chol   = st.selectbox("Cholesterol", [1, 2, 3],
+               format_func=lambda v: {1:"Normal", 2:"Above normal", 3:"Well above normal"}[v])
+    gluc   = st.selectbox("Glucose", [1, 2, 3],
+               format_func=lambda v: {1:"Normal", 2:"Above normal", 3:"Well above normal"}[v])
 
-# ── Flagged records table ─────────────────────────────────────────────────────
-st.subheader(f"Flagged patients ({len(flagged):,})")
-st.caption("Sorted by most anomalous (lowest score) first. These records "
-           "would be routed for clinical review in a monitoring workflow.")
-st.dataframe(
-    flagged[["age_years", "gender", "height", "weight", "bmi",
-             "ap_hi", "ap_lo", "cholesterol", "gluc",
-             "smoke", "alco", "active", "cardio", "iso_score"]],
-    use_container_width=True, height=400
-)
+with c3:
+    smoke  = st.checkbox("Smoker")
+    alco   = st.checkbox("Alcohol intake")
+    active = st.checkbox("Physically active", value=True)
+    bmi    = round(weight / (height / 100) ** 2, 1)
+    st.metric("Computed BMI", bmi)
 
-# ── Scatter: age vs BP coloured by flag ──────────────────────────────────────
-st.subheader("Age vs Systolic BP — anomalous patients highlighted")
-fig3 = px.scatter(
-    df_view.sample(min(5000, len(df_view)), random_state=42),
-    x="age_years", y="ap_hi",
-    color="flagged",
-    color_discrete_map={False: "#90caf9", True: "#c62828"},
-    opacity=0.5, size_max=4,
-    labels={"age_years": "Age (years)", "ap_hi": "Systolic BP (mmHg)", "flagged": "Flagged"},
-    title="Random 5,000-patient sample"
-)
-fig3.update_layout(height=380, margin=dict(t=40, b=10))
-st.plotly_chart(fig3, use_container_width=True)
+row = pd.DataFrame([{
+    "age_years": age, "gender": 1 if sex == "Female" else 2,
+    "height": height, "weight": weight, "bmi": bmi,
+    "ap_hi": ap_hi, "ap_lo": ap_lo,
+    "cholesterol": chol, "gluc": gluc,
+    "smoke": int(smoke), "alco": int(alco), "active": int(active),
+}])
+
+# ── Score ─────────────────────────────────────────────────────────────────────
+st.divider()
+flag  = iso.predict(row[FEATURES])[0]       # -1 = anomaly, 1 = normal
+score = float(iso.decision_function(row[FEATURES])[0])
+
+m1, m2, m3 = st.columns(3)
+m1.metric("Isolation Forest score", f"{score:.4f}",
+          help="Higher = more typical. Negative = outlier territory.")
+m2.metric("Status", "⚠️ Anomalous" if flag == -1 else "✅ Normal")
+m3.metric("Threshold", "0.0  (negative = flagged)")
+
+if flag == -1:
+    st.warning(
+        "⚠️ **This patient profile is flagged as anomalous** relative to the 68,595-patient "
+        "training cohort. In a monitoring workflow this record would be routed for clinical "
+        "review — possible data-entry error or rare physiology."
+    )
+else:
+    st.success("✅ This patient profile looks **typical** for the cardiovascular cohort.")
+
+# ── Score interpretation ──────────────────────────────────────────────────────
+with st.expander("How to interpret the score"):
+    st.markdown("""
+| Score range | Meaning |
+|---|---|
+| > 0.05 | Clearly normal — well within the cohort distribution |
+| 0 to 0.05 | Borderline — worth a second look |
+| -0.05 to 0 | Mildly unusual |
+| < -0.05 | Clearly anomalous — flag for review |
+
+The Isolation Forest was trained with `contamination=0.02`, meaning it expects
+roughly **2% of records** in a real population to be anomalous.
+    """)
+
+# ── About ─────────────────────────────────────────────────────────────────────
+with st.expander("About this model"):
+    st.markdown("""
+**Algorithm:** Isolation Forest (scikit-learn)
+**Training data:** 68,595 cleaned cardiovascular records (Kaggle)
+**Features used:** age, sex, height, weight, BMI, systolic BP, diastolic BP,
+cholesterol level, glucose level, smoking, alcohol, physical activity
+**Contamination rate:** 2% — the model expects ~2% of any population to be anomalous
+    """)
