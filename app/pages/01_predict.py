@@ -20,8 +20,16 @@ MODELS_DIR = Path("models/saved")
 
 
 @st.cache_resource(show_spinner=False)
-def load_pipeline():
-    pkl = MODELS_DIR / "lgbm_pipeline_cardio.pkl"
+def load_model():
+    pkl = MODELS_DIR / "lgbm_model_cardio.pkl"
+    if pkl.exists():
+        return joblib.load(pkl)
+    return None
+
+
+@st.cache_resource(show_spinner=False)
+def load_scaler():
+    pkl = MODELS_DIR / "lgbm_scaler_cardio.pkl"
     if pkl.exists():
         return joblib.load(pkl)
     return None
@@ -36,15 +44,16 @@ def load_iso():
 
 
 @st.cache_resource(show_spinner=False)
-def get_explainer(_pipe):
-    return shap.TreeExplainer(_pipe.named_steps["model"])
+def get_explainer(_model):
+    return shap.TreeExplainer(_model)
 
 
 # ── Load models ───────────────────────────────────────────────────────────────
-pipe = load_pipeline()
-iso  = load_iso()
+model  = load_model()
+scaler = load_scaler()
+iso    = load_iso()
 
-if pipe is None:
+if model is None or scaler is None:
     st.error("Prediction model not found. Pre-trained model file is missing from models/saved/.")
     st.stop()
 
@@ -93,8 +102,11 @@ row_df = pd.DataFrame([{
 
 st.divider()
 
-# ── Results ───────────────────────────────────────────────────────────────────
-prob  = float(pipe.predict_proba(row_df[FEATURES])[:, 1][0])
+# ── Preprocess + predict ──────────────────────────────────────────────────────
+num_scaled = scaler.transform(row_df[NUMERIC])
+X_ready    = np.hstack([num_scaled, row_df[CODED].values])
+
+prob  = float(model.predict_proba(X_ready)[:, 1][0])
 band  = "Low" if prob < 0.33 else ("Moderate" if prob < 0.66 else "High")
 color = {"Low": "#2e7d32", "Moderate": "#f9a825", "High": "#c62828"}[band]
 
@@ -124,9 +136,8 @@ st.divider()
 st.subheader("What is driving this patient's risk?")
 st.caption("Each bar shows how strongly a feature pushed the risk score up (red) or down (green) for this specific patient.")
 
-explainer = get_explainer(pipe)
-x  = pipe.named_steps["prep"].transform(row_df[FEATURES])
-sv = explainer.shap_values(x)
+explainer = get_explainer(model)
+sv = explainer.shap_values(X_ready)
 sv = sv[1] if isinstance(sv, list) else sv
 sv = np.array(sv).ravel()
 FEATURE_LABELS = {
