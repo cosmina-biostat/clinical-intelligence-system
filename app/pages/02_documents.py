@@ -84,7 +84,7 @@ if uploaded and st.session_state.get("active_pdf") != uploaded.name:
     st.session_state["rag_source"]   = source
     st.session_state["active_pdf"]   = uploaded.name
     st.session_state["chat_history"] = []
-    st.success(f"Indexed **{len(store.count())} chunks** from **{uploaded.name}**")
+    st.success(f"Indexed **{store.count()} chunks** from **{uploaded.name}**")
 
 # Show which document is active
 if "rag_source" in st.session_state:

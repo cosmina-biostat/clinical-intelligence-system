@@ -9,34 +9,30 @@ st.set_page_config(
 
 st.title("🏥 Clinical Data Intelligence & Monitoring System")
 st.markdown("""
-A production-ready platform combining **ML risk prediction**, **explainability**,
-**anomaly detection**, and **document Q&A** for clinical researchers, hospital data teams,
-and clinicians.
+We exist to put the power of machine learning directly in the hands of clinicians —
+no data science degree required.
 """)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 🫀 Risk Prediction")
-    st.markdown("Enter patient vitals → LightGBM returns a CVD risk score in <1 second.")
-    st.page_link("pages/01_predict.py", label="Open Risk Prediction →")
-
-    st.markdown("### 🔍 Anomaly Monitor")
-    st.markdown("Isolation Forest flags patients whose profiles are unusual vs the training cohort.")
-    st.page_link("pages/02_anomaly.py", label="Open Anomaly Monitor →")
+    st.markdown("### 🫀 Patient Risk & Anomaly Checker")
+    st.markdown(
+        "Enter patient vitals → get a cardiovascular risk score, a plain-English explanation "
+        "of what is driving it, and an anomaly flag if the profile is unusual."
+    )
+    st.page_link("pages/01_predict.py", label="Open Patient Checker →")
 
 with col2:
-    st.markdown("### 📊 Model Comparison")
-    st.markdown("Side-by-side ROC-AUC / F1 for all 4 classifiers on the cardiovascular dataset.")
-    st.page_link("pages/03_models.py", label="Open Model Comparison →")
-
     st.markdown("### 📄 Document Q&A")
-    st.markdown("Upload a clinical PDF → ask questions in plain English → Claude AI answers with context.")
-    st.page_link("pages/04_documents.py", label="Open Document Q&A →")
+    st.markdown(
+        "Ask any question about a clinical protocol PDF in plain English. "
+        "Claude AI retrieves the relevant passage and answers with the source quoted back."
+    )
+    st.page_link("pages/02_documents.py", label="Open Document Q&A →")
 
 st.divider()
-st.markdown("""
-**Dataset** · Cardiovascular Disease — 70,000 records (Kaggle)
-**Stack** · scikit-learn · XGBoost · LightGBM · SHAP · MLflow · FAISS · Claude API · Streamlit
-**Note** · Document Q&A requires an `ANTHROPIC_API_KEY` in your `.env` file.
-""")
+st.caption(
+    "Trained on 68,595 cardiovascular records · "
+    "LightGBM · Isolation Forest · SHAP · ChromaDB · Claude Haiku · Streamlit"
+)
