@@ -152,12 +152,12 @@ order  = np.argsort(np.abs(sv))[::-1]
 names  = [FEATURE_LABELS[FEATURES[i]] for i in order]
 values = sv[order]
 
-fig, ax = plt.subplots(figsize=(7, 3.5))
+fig, ax = plt.subplots(figsize=(5, 3))
 colors  = ["#c62828" if v > 0 else "#2e7d32" for v in values]
 ax.barh(names[::-1], values[::-1], color=colors[::-1], height=0.55)
 ax.axvline(0, color="k", lw=0.8)
-ax.set_xlabel("SHAP value  (red = raises risk · green = lowers risk)", fontsize=9)
-ax.tick_params(axis="both", labelsize=9)
+ax.set_xlabel("SHAP value  (red = raises risk · green = lowers risk)", fontsize=7)
+ax.tick_params(axis="both", labelsize=7)
 ax.spines[["top", "right"]].set_visible(False)
 fig.tight_layout()
 st.pyplot(fig, use_container_width=False)
