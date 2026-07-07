@@ -1,4 +1,4 @@
-# Core data science
+# ── Core data science ──────────────────────────────────────────────────
 pandas==2.2.2
 numpy==1.26.4
 scikit-learn==1.5.0
@@ -6,29 +6,38 @@ xgboost==2.0.3
 lightgbm==4.3.0
 imbalanced-learn==0.12.3
 
-# Explainability
+# ── Explainability ──────────────────────────────────────────────────────
 shap==0.45.1
 
-# Experiment tracking
+# ── Experiment tracking ──────────────────────────────────────────────────
 mlflow==2.13.0
 
-# RAG & LLM
+# ── RAG & LLM ─────────────────────────────────────────────────────────
 anthropic==0.28.0
 langchain==0.2.5
 langchain-community==0.2.5
+langchain-text-splitters==0.2.1    # ADDED -- rag_chunker.py imports this directly
 sentence-transformers==3.0.1
 faiss-cpu==1.8.0
+chromadb==0.5.3                    # ADDED -- rag_store.py's vector store (ChromaDB, not FAISS)
 pdfplumber==0.11.1
 PyMuPDF==1.24.5
+pypdf==4.2.0                       # ADDED -- protocol_parser.py / main.py use pypdf specifically
 
-# Dashboard
+# ── Backend API ───────────────────────────────────────────────────────
+fastapi==0.111.0                   # ADDED -- required to run backend/main.py at all
+uvicorn[standard]==0.30.1          # ADDED -- ASGI server (uvicorn backend.main:app)
+python-multipart==0.0.9            # ADDED -- required by FastAPI for file uploads (UploadFile)
+
+# ── Dashboard ─────────────────────────────────────────────────────────
 streamlit==1.35.0
 plotly==5.22.0
+requests==2.32.3                   # ADDED -- frontend -> backend HTTP calls (api_get/api_post)
 
-# Utilities
+# ── Utilities ─────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 joblib==1.4.2
 tqdm==4.66.4
 
-# Testing
+# ── Testing ───────────────────────────────────────────────────────────
 pytest==8.2.2
