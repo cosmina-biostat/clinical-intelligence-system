@@ -15,6 +15,7 @@ from backend.extractor import process_documents
 # ── ML inference (this chat's models) ─────────────────────────────────────────
 from backend.inference import assess, classify_review, predict_quality, models_status
 from backend.disease_prediction.disease_models import build_registry, resolve_features
+from backend.disease_prediction.anomaly_models import build_anomaly_registry
 
 app = FastAPI(title="ClinOrigin AI", version="1.0")
 
@@ -28,6 +29,7 @@ app.add_middleware(
 # ── Server-side schema registry (protocol_id -> schema dict) ──────────────────
 SCHEMA_REGISTRY: dict[str, dict] = {}
 DISEASE_REGISTRY = build_registry()
+ANOMALY_REGISTRY = build_anomaly_registry()
 PROTOCOL_DIR = Path(__file__).parent / "protocols"
 PROTOCOL_DIR.mkdir(exist_ok=True)
 
@@ -397,6 +399,47 @@ def disease_predict_from_record(req: PredictFromRecordRequest):
     }
 
 
+class AnomalyFromRecordRequest(BaseModel):
+    indication: str
+    data: dict
+
+
+@app.post("/anomaly/detect_from_record")
+def anomaly_detect_from_record(req: AnomalyFromRecordRequest):
+    """
+    Unsupervised anomaly check for the Structured Data table: given a
+    protocol's indication and an already-extracted patient record, match
+    the anomaly model, resolve the record's fields onto its feature
+    contract (same mapping used for risk prediction, since both cardio
+    models share the same 12 features), and run IsolationForest.
+
+    Complements the rule-based checks.py flags and the supervised risk
+    model: a patient can pass every individual range check and still be
+    flagged here if the *combination* of values is statistically unusual.
+    Never guesses -- missing fields return available=False.
+    """
+    card = ANOMALY_REGISTRY.match_indication(req.indication)
+    if card is None:
+        return {"available": False, "reason": "no_model_for_indication"}
+
+    # Reuse the disease-risk resolver: same model key ("cardio") happens to
+    # share the identical 12-feature contract for both registries.
+    features, missing = resolve_features(card.key, req.data)
+    if features is None:
+        return {"available": False, "reason": "missing_fields", "missing": missing,
+                "model_key": card.key, "model_name": card.display_name}
+
+    result = ANOMALY_REGISTRY.detect(card.key, features)
+    return {
+        "available": True,
+        "model_key": result.model_key,
+        "model_name": result.model_name,
+        "is_anomaly": result.is_anomaly,
+        "anomaly_score": result.anomaly_score,
+        "top_contributors": result.top_contributors,
+    }
+
+
 @app.get("/disease/match")
 def disease_match(indication: str):
     """
@@ -458,6 +501,7 @@ def health():
     return {
         "status": "ok",
         "disease_models": [c.key for c in DISEASE_REGISTRY.available()],
+        "anomaly_models": [c.key for c in ANOMALY_REGISTRY.available()],
         "models": models_status(),
         "protocols_loaded": list(SCHEMA_REGISTRY.keys()),
     }

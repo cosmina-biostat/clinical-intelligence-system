@@ -1,13 +1,3 @@
-"""
-field_matcher.py
-ClinOrigin AI -- Hybrid Field Name Matcher
-
-Stage 1: Exact match against STANDARD_FIELD_NAMES (fast, deterministic)
-Stage 2: Alias map lookup (learned matches, persistent)
-Stage 3: Vector similarity (for unknown fields, medical embeddings)
-         → on match: save to alias map for future runs
-"""
-
 import json
 from pathlib import Path
 from sentence_transformers import SentenceTransformer, util

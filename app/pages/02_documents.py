@@ -97,6 +97,34 @@ for i, name in enumerate(NAV):
         st.rerun()
 st.markdown("<hr style='border-color:#e6e9ec;margin:8px 0 16px 0'>", unsafe_allow_html=True)
 
+def get_cached_anomalies():
+    """
+    Same caching pattern as get_cached_predictions(), for the unsupervised
+    anomaly check. Kept as a separate cache (own key/slot) since it's a
+    different endpoint with independent availability.
+    """
+    import hashlib, json as _json
+    indication = (st.session_state.schema or {}).get("indication", "")
+    fingerprint = hashlib.md5(
+        _json.dumps([r["data"] for r in st.session_state.records],
+                   sort_keys=True, default=str).encode()
+    ).hexdigest()
+    cache_key = f"{indication}|{fingerprint}"
+
+    if st.session_state.get("_anomaly_cache_key") != cache_key:
+        with st.spinner("Checking for statistically unusual patient profiles..."):
+            results = []
+            for rec in st.session_state.records:
+                res, err = api_post("/anomaly/detect_from_record", {
+                    "indication": indication, "data": rec["data"],
+                })
+                results.append(res if not err else {"available": False,
+                                                     "reason": "request_failed"})
+        st.session_state._anomaly_cache = results
+        st.session_state._anomaly_cache_key = cache_key
+    return st.session_state._anomaly_cache
+
+
 def get_cached_predictions():
     """
     Returns predictions for the current record set, computing (and caching)
@@ -359,15 +387,16 @@ elif page == "Extraction":
 # ═══════════════════════════════════════════════════════════════════════════
 elif page == "Structured":
     st.markdown("# Structured data")
-    st.caption("All extracted records, with an automatic risk prediction column "
-               "computed from each patient's own extracted values.")
+    st.caption("All extracted records, with automatic risk prediction and "
+               "anomaly checks computed from each patient's own extracted values.")
     if not st.session_state.records:
         st.info("No records yet. Run an extraction.")
     else:
         predictions = get_cached_predictions()
+        anomalies = get_cached_anomalies()
 
         rows = []
-        for rec, pred in zip(st.session_state.records, predictions):
+        for rec, pred, anom in zip(st.session_state.records, predictions, anomalies):
             row = dict(rec["data"])
             row["_review"] = rec["review_status"]
             row["_quality"] = rec.get("quality_score")
@@ -375,7 +404,7 @@ elif page == "Structured":
 
             if pred and pred.get("available"):
                 row["risk_prediction"] = pred["label"]
-                row["risk_probability"] = pred["probability"]
+                row["risk_probability"] = round(pred["probability"] * 100, 1)
             elif pred and pred.get("reason") == "missing_fields":
                 row["risk_prediction"] = "insufficient data"
                 row["risk_probability"] = None
@@ -388,9 +417,37 @@ elif page == "Structured":
             else:
                 row["risk_prediction"] = "\u2014"
                 row["risk_probability"] = None
+
+            if anom and anom.get("available"):
+                if anom["is_anomaly"]:
+                    top = ", ".join(f[0] for f in anom.get("top_contributors", [])[:3])
+                    row["anomaly"] = f"\u26a0 unusual ({top})" if top else "\u26a0 unusual"
+                else:
+                    row["anomaly"] = "typical"
+            else:
+                row["anomaly"] = "\u2014"
+
+            if row.get("_quality") is not None:
+                row["_quality"] = round(row["_quality"] * 100, 1)
             rows.append(row)
 
-        st.dataframe(rows, use_container_width=True)
+        st.dataframe(
+            rows,
+            use_container_width=True,
+            column_config={
+                "risk_probability": st.column_config.ProgressColumn(
+                    "Risk probability", min_value=0, max_value=100,
+                    format="%.0f%%",
+                ),
+                "_quality": st.column_config.ProgressColumn(
+                    "Quality", min_value=0, max_value=100, format="%.0f%%",
+                ),
+                "_review": st.column_config.TextColumn("Review"),
+                "anomaly": st.column_config.TextColumn("Anomaly (profile)"),
+                "_flags": st.column_config.NumberColumn("Flags"),
+                "risk_prediction": st.column_config.TextColumn("Risk prediction"),
+            },
+        )
 
         # Explicit CSV download (in addition to the table's built-in export
         # icon) since there's no separate Export page anymore.
