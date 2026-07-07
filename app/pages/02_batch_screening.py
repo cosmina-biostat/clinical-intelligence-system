@@ -247,7 +247,10 @@ if st.button(f"Extract & Score {len(uploaded_files)} patient(s)", type="primary"
     st.dataframe(df_results, use_container_width=True)
 
     # Highlight high-risk patients
-    high_risk = df_results[df_results.get("Risk Level", pd.Series()) == "High"]
+    if "Risk Level" in df_results.columns:
+        high_risk = df_results[df_results["Risk Level"] == "High"]
+    else:
+        high_risk = pd.DataFrame()
     if not high_risk.empty:
         st.warning(f"⚠️ {len(high_risk)} patient(s) flagged as **High Risk** — review recommended.")
         st.dataframe(high_risk[["Patient ID", "Age", "Sex", "CVD Risk", "Profile"]], use_container_width=True)
