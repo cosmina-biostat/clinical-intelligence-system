@@ -78,7 +78,7 @@ for k, v in [("schema", None), ("pdf_path", None), ("records", []),
     if k not in st.session_state:
         st.session_state[k] = v
 
-st.markdown("# 📄 Documents — ClinOrigin AI")
+st.markdown("# 📄 Documents — CDIM System")
 
 NAV = ["Protocol & Chat", "Extraction", "Structured", "Monitoring", "Insights"]
 cols = st.columns(len(NAV))
