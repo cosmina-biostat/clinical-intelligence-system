@@ -108,6 +108,7 @@ def parse_protocol(pdf_path: str) -> dict:
     prompt = f"""You are a clinical data manager who strictly follows instructions.
 Extract the following fields:
 - study_name
+- study_acronym
 - indication
 - study_type
 - protocol_version
@@ -125,6 +126,11 @@ When creating field_classification and validation_ranges, use these STANDARD fie
 
 Rules:
 - Only information explicitly stated in the text
+- For study_acronym: the short study name / acronym by which the trial is known
+  (e.g. "STRONG", "KEYNOTE-054", "CLASSIC-MS"), usually in parentheses in the
+  title. It is a memorable name, NOT a disease abbreviation like "(MS)" and NOT
+  a section marker like "(Part A)". If the title has no real acronym, use the
+  main drug/compound name or the protocol number instead. If none exists, null.
 - Respond ONLY with JSON, no text before or after
 - If a value is not clearly stated in the text, return null — never invent
 - For field_classification: classify fields into three CDISC core categories:
@@ -139,6 +145,7 @@ Rules:
 Respond ONLY with JSON in this format:
 {{
     "study_name": "...",
+    "study_acronym": "...",
     "indication": "...",
     "study_type": "...",
     "protocol_version": "...",
@@ -212,15 +219,13 @@ Respond ONLY with JSON in this format:
 
 
 def get_schema(pdf_path: str, cache_path: str = None) -> dict:
-   
-    if cache_path is None:
-        schema_dir = Path(__file__).parent / "schema"
-        schema_dir.mkdir(exist_ok=True)
-        cache_path = schema_dir / (Path(pdf_path).stem + "_schema.json")
+    """Returns the StudySchema. Uses cached JSON if available (saves tokens)."""
 
-    cache_path = Path(cache_path)
-    
-    if cache_path.exists():
+    if cache_path is None:
+            schema_dir = Path(__file__).parent / "schema"
+            schema_dir.mkdir(exist_ok=True)
+            cache_path = schema_dir / (Path(pdf_path).stem + "_schema.json")
+    if os.path.exists(cache_path):
         with open(cache_path, "r", encoding="utf-8") as f:
             print(f"Schema loaded from cache: {cache_path}")
             return json.load(f)

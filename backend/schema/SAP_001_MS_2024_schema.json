@@ -1,0 +1,340 @@
+{
+  "study_name": "A Phase 2 double blind, randomized, placebo controlled study evaluating the effect of SAR443820 on serum neurofilament levels in participants with multiple sclerosis, followed by an open label long-term extension period",
+  "indication": "Multiple Sclerosis (MS), including RRMS, SPMS, and PPMS",
+  "study_type": "Phase 2, randomized, double-blind, placebo-controlled, 2 parallel-arm study with open-label long-term extension (Part A: 48-week double-blind; Part B: open-label extension to Week 96)",
+  "protocol_version": "Amended Clinical Trial Protocol 04, dated 13-December-2023; SAP Version 1, dated 12-Jul-2024 (VV-CLIN-0665575 1.0 / VV-CLIN-0702594 1.0)",
+  "visit_structure": "Part A: Screening period up to 4 weeks, then double-blind treatment period 48 weeks with in-clinic visits at Day 1 (Baseline), Weeks 2, 6, 12, 24, 36, and 48. Part B: Open-label extension from Week 48 to Week 96 with in-clinic visits at Weeks 48, 52, 72, and 96; liver chemistry-only visits at Weeks 50, 54, 56, 58, 60, 62, 64, 66, 68, 70, 76, 80, 84, 88, and 92 (at local labs where available). Early discontinuation or safety follow-up visit up to 2 weeks after last dose of IMP for participants not entering Part B.",
+  "field_definitions": {
+    "sNfL": "Serum neurofilament light chain level; primary endpoint measured at baseline, Week 48 (Part A), and Week 96 (Part B)",
+    "EDSS_score": "Expanded Disability Status Scale score; measure of disability progression",
+    "9HPT": "9-Hole Peg Test; quantitative test of upper extremity function (lower bound: 10 sec, upper bound: 300 sec); calculated as harmonic mean of dominant and non-dominant hand trials",
+    "T25FW": "Timed 25-Foot Walk test; quantitative mobility and leg function test (lower bound: 2.2 sec, upper bound: 180 sec); average of 2 trials",
+    "CDP": "Confirmed Disability Progression; EDSS increase of >=1.0 point from baseline if baseline <=5.5, or >=0.5 points if baseline >5.5, confirmed over 12 weeks (Part A) or 24 weeks (Part B)",
+    "CCDP": "Composite Confirmed Disability Progression (EDSS-Plus); confirmed over 24 weeks in Part B",
+    "ARR": "Annualized Relapse Rate in RMS population (relapsing SPMS and RRMS) up to Week 48",
+    "BVL": "Brain Volume Loss; percent change from baseline as detected by brain MRI at 48 weeks",
+    "Gd_enhancing_T1_lesions": "Cumulative number of new gadolinium-enhancing T1 hyperintense lesions as detected by MRI at Week 48",
+    "new_enlarging_T2_lesions": "Cumulative number of new and/or enlarging T2 hyperintense lesions as detected by MRI at Week 48",
+    "slowly_expanding_lesions": "Change from baseline in volume, number, and normalized intensity (T1) of slowly expanding lesions",
+    "phase_rim_lesions": "Change from baseline in number of phase rim lesions (PRL) at Weeks 12, 24, 36, and 48 (3T capable sites only)",
+    "MSIS_29v2": "Multiple Sclerosis Impact Scale version 2; physical impact score (items 1-20, transformed 0-100) and psychological impact score (items 21-29, transformed 0-100); higher scores indicate greater impact",
+    "MSWS_12": "12-Item MS Walking Scale; global score 0-100 (higher = better quality of life); sum of 12 items transformed to 0-100 scale",
+    "CSSRS": "Columbia Suicide Severity Rating Scale; baseline defined as worst assessment between past 6 months at screening and since last visit on Day 1",
+    "PK_plasma_concentration": "Plasma concentration of SAR443820; summarized by arithmetic and geometric means per sampling time",
+    "ALT": "Alanine aminotransferase; liver function test; AESI threshold >3x ULN",
+    "AST": "Aspartate aminotransferase; liver function test; AESI threshold >3x ULN",
+    "total_bilirubin": "Total bilirubin; liver function test; AESI threshold >2x ULN",
+    "hemoglobin": "Hematology parameter",
+    "hematocrit": "Hematology parameter",
+    "mcv": "Mean corpuscular volume; hematology parameter",
+    "mch": "Mean corpuscular hemoglobin; hematology parameter",
+    "rbc": "Red blood cell count; hematology parameter",
+    "platelets": "Platelet count; hematology parameter",
+    "wbc": "White blood cell count; hematology parameter",
+    "neutrophils": "White blood cell differential; hematology parameter",
+    "lymphocytes": "White blood cell differential; hematology parameter",
+    "monocytes": "White blood cell differential; hematology parameter",
+    "basophils": "White blood cell differential; hematology parameter",
+    "eosinophils": "White blood cell differential; hematology parameter",
+    "glucose": "Clinical chemistry; metabolism",
+    "total_protein": "Clinical chemistry; metabolism",
+    "albumin": "Clinical chemistry; metabolism",
+    "ck": "Creatine phosphokinase; clinical chemistry; metabolism",
+    "sodium": "Clinical chemistry; electrolyte",
+    "potassium": "Clinical chemistry; electrolyte",
+    "calcium": "Clinical chemistry; electrolyte",
+    "creatinine": "Clinical chemistry; renal function",
+    "bun": "Blood urea nitrogen; clinical chemistry; renal function",
+    "alp": "Alkaline phosphatase; clinical chemistry; liver function",
+    "direct_bilirubin": "Direct bilirubin; clinical chemistry; liver function",
+    "pregnancy_test": "Serum beta-hCG; all female participants",
+    "hiv_antibody": "Hepatitis screen",
+    "hbsag": "Hepatitis B surface antigen; hepatitis screen",
+    "hcv_antibody": "Hepatitis C virus antibody; hepatitis screen",
+    "urinalysis": "Quantitative urinalysis: pH, specific gravity, proteins, glucose, blood, ketones, bilirubin, urobilinogen, nitrite, leukocyte esterase (by dipstick)",
+    "pulse": "Heart rate; vital sign",
+    "systolic_bp": "Systolic blood pressure; vital sign",
+    "diastolic_bp": "Diastolic blood pressure; vital sign",
+    "weight": "Body weight; vital sign",
+    "respiratory_rate": "Respiratory rate; vital sign",
+    "temperature": "Body temperature; vital sign",
+    "ecg_hr": "ECG heart rate",
+    "ecg_pr": "ECG PR interval",
+    "ecg_qrs": "ECG QRS duration",
+    "ecg_qt": "ECG QT interval",
+    "ecg_qtc_bazett": "Corrected QTc interval per Bazett formula",
+    "ecg_qtc_fridericia": "Corrected QTc interval per Fridericia formula",
+    "ms_clinical_subtype": "MS clinical subtype: RRMS, SPMS, or PPMS; randomization stratification factor",
+    "background_dmt": "Background disease-modifying therapy; concomitant or absent",
+    "bmi": "Body mass index; used as subgroup factor (baseline BMI <median vs >=median)"
+  },
+  "field_classification": {
+    "required": [
+      "patient_id",
+      "age",
+      "sex"
+    ],
+    "expected": [
+      "neurofilament_light",
+      "edss_score",
+      "hemoglobin",
+      "hematocrit",
+      "rbc",
+      "platelets",
+      "wbc",
+      "lymphocytes",
+      "alt",
+      "ast",
+      "alp",
+      "total_bilirubin",
+      "creatinine",
+      "bun",
+      "albumin",
+      "total_protein",
+      "glucose",
+      "sodium",
+      "potassium",
+      "calcium",
+      "ck",
+      "pregnancy_test",
+      "pulse",
+      "systolic_bp",
+      "diastolic_bp",
+      "weight",
+      "respiratory_rate",
+      "temperature",
+      "adverse_events",
+      "concomitant_medications",
+      "visit_date"
+    ],
+    "permissible": [
+      "ms_clinical_subtype",
+      "background_dmt",
+      "bmi",
+      "ecg_hr",
+      "ecg_pr",
+      "ecg_qrs",
+      "ecg_qt",
+      "ecg_qtc_bazett",
+      "ecg_qtc_fridericia",
+      "direct_bilirubin",
+      "hiv_antibody",
+      "hbsag",
+      "hcv_antibody",
+      "urinalysis",
+      "msis_29v2_physical",
+      "msis_29v2_psychological",
+      "msws_12",
+      "cssrs",
+      "pk_plasma_concentration",
+      "gd_enhancing_t1_lesions",
+      "new_enlarging_t2_lesions",
+      "bvl",
+      "slowly_expanding_lesions",
+      "phase_rim_lesions",
+      "9hpt",
+      "t25fw",
+      "arr"
+    ]
+  },
+  "validation_rules": {
+    "sNfL_baseline": "Baseline NfL defined as lower of screening and Day 1 values if Gd-enhancing T1 lesion count at Day 1 > 0; otherwise average of screening and Day 1 values prior to first dose",
+    "EDSS_baseline": "Baseline EDSS defined as average of screening and Day 1 visit values prior to first dose; if one value missing, non-missing value used",
+    "primary_endpoint_evaluable": "Participant must have a baseline and at least 1 post-baseline sNfL assessment before IMP discontinuation and before permanent modification of background DMT",
+    "9HPT_bounds": "Values below lower bound (10 sec) set to 10 sec; values above upper bound (300 sec) set to 300 sec; if participant cannot complete due to physical limitation, maximum time (300 sec) used; if only 1 trial done for a hand, average replaced by available trial; if only one hand assessed, overall 9-HPT considered missing",
+    "T25FW_bounds": "Values below lower bound (2.2 sec) set to 2.2 sec; values above upper bound (180 sec) set to 180 sec; if participant cannot complete due to physical limitation, maximum time (180 sec) used; missing values for other reasons not imputed",
+    "LLOQ_handling": "Data below LLOQ replaced by half of LLOQ; data above ULOQ replaced by ULOQ value for quantitative analysis",
+    "PK_LLOQ": "For drug-treated participants, concentration values below LLOQ replaced by one-half of LLOQ",
+    "CDP_confirmation_partA": "Confirmed disability progression on EDSS confirmed over at least 12 weeks in Part A",
+    "CDP_confirmation_partB": "Confirmed disability progression on EDSS, 9-HPT (>=20% increase), T25-FW (>=20% increase), and CCDP confirmed over at least 24 weeks in Part B",
+    "EDSS_CDP_threshold": "Increase of >=1.0 point from baseline EDSS if baseline <=5.5; increase of >=0.5 points if baseline >5.5",
+    "death_MS": "Death due to MS considered confirmed disability progression regardless of baseline EDSS or change in EDSS",
+    "death_other": "Death for reasons other than MS: participant event time censored at date of last EDSS assessment",
+    "MSIS29v2_imputation": "Missing items imputed by domain average if at least 50% of items completed (>=10 physical, >=5 psychological)",
+    "MSWS12_imputation": "Missing items imputed by average of available items if at least 50% completed (>=6 items)",
+    "analysis_window_tie": "If multiple assessments equidistant from target study day, value after targeted study day used; if multiple valid values same day, first value of day selected",
+    "ALT_AESI_threshold": "ALT increase >3x ULN triggers AESI reporting via dedicated CRF page",
+    "DILI_threshold": "ALT or AST >3x ULN with total bilirubin >2x ULN triggers drug-induced liver injury analysis",
+    "subgroup_combination": "Subgroup categories with fewer than 10% of participants combined with other categories; for factors with only two categories, no subgroup analysis if fewer than 10% in one category",
+    "randomization_multiple": "For participants randomized more than once, only data from first randomization used in any analysis population",
+    "CSSRS_baseline": "Baseline C-SSRS defined as worst assessment between past 6 months evaluation at screening and since last visit evaluation on Day 1"
+  },
+  "validation_ranges": {
+    "alt": {
+      "xULN": {
+        "min": null,
+        "max": 3
+      }
+    },
+    "ast": {
+      "xULN": {
+        "min": null,
+        "max": 3
+      }
+    },
+    "total_bilirubin": {
+      "xULN": {
+        "min": null,
+        "max": 2
+      }
+    },
+    "neurofilament_light": {
+      "pg/mL": {
+        "min": null,
+        "max": null
+      }
+    },
+    "edss_score": {
+      "points": {
+        "min": 0,
+        "max": 10
+      }
+    },
+    "9hpt": {
+      "sec": {
+        "min": 10,
+        "max": 300
+      }
+    },
+    "t25fw": {
+      "sec": {
+        "min": 2.2,
+        "max": 180
+      }
+    },
+    "msis_29v2_physical": {
+      "score": {
+        "min": 0,
+        "max": 100
+      }
+    },
+    "msis_29v2_psychological": {
+      "score": {
+        "min": 0,
+        "max": 100
+      }
+    },
+    "msws_12": {
+      "score": {
+        "min": 0,
+        "max": 100
+      }
+    }
+  },
+  "data_types": {
+    "continuous": [
+      "sNfL (log-transformed for primary analysis)",
+      "EDSS score",
+      "9-HPT (seconds)",
+      "T25-FW (seconds)",
+      "hemoglobin",
+      "hematocrit",
+      "rbc",
+      "wbc",
+      "platelets",
+      "lymphocytes",
+      "neutrophils",
+      "monocytes",
+      "basophils",
+      "eosinophils",
+      "mcv",
+      "mch",
+      "alt",
+      "ast",
+      "alp",
+      "total_bilirubin",
+      "direct_bilirubin",
+      "creatinine",
+      "bun",
+      "albumin",
+      "total_protein",
+      "glucose",
+      "ck",
+      "sodium",
+      "potassium",
+      "calcium",
+      "pulse",
+      "systolic_bp",
+      "diastolic_bp",
+      "weight",
+      "respiratory_rate",
+      "temperature",
+      "ecg_hr",
+      "ecg_pr",
+      "ecg_qrs",
+      "ecg_qt",
+      "ecg_qtc_bazett",
+      "ecg_qtc_fridericia",
+      "pk_plasma_concentration",
+      "bvl",
+      "msis_29v2_physical",
+      "msis_29v2_psychological",
+      "msws_12",
+      "bmi",
+      "age"
+    ],
+    "categorical": [
+      "sex",
+      "ms_clinical_subtype (RRMS, SPMS, PPMS)",
+      "treatment_group (SAR443820 or placebo)",
+      "background_dmt (with/without)",
+      "pregnancy_test (positive/negative)",
+      "hiv_antibody",
+      "hbsag",
+      "hcv_antibody",
+      "adverse_events",
+      "CSSRS categories (no suicidal ideation/behavior, suicidal ideation, suicidal behavior)",
+      "PCSA status (normal/missing, abnormal)",
+      "eligibility_confirmed"
+    ],
+    "count": [
+      "Gd-enhancing T1 lesions (cumulative count)",
+      "new/enlarging T2 lesions (cumulative count)",
+      "phase rim lesions (count)",
+      "slowly expanding lesions (count)"
+    ],
+    "time_to_event": [
+      "time to CDP (12-week confirmed, Part A)",
+      "time to CDP (24-week confirmed, Part B)",
+      "time to 20% increase in 9-HPT (Part B)",
+      "time to 20% increase in T25-FW (Part B)",
+      "time to CCDP (24-week confirmed, Part B)"
+    ],
+    "rate": [
+      "ARR (annualized relapse rate)"
+    ],
+    "date": [
+      "visit_date",
+      "randomization_date",
+      "first_IMP_administration_date",
+      "last_IMP_administration_date",
+      "date_of_death",
+      "end_of_study_date"
+    ]
+  },
+  "eligibility_criteria": {
+    "inclusion": [
+      "Diagnosis of multiple sclerosis (MS)",
+      "MS clinical subtype of RRMS, SPMS, or PPMS",
+      "Clinical status evaluated based on EDSS during screening",
+      "Signed informed consent form (ICF)",
+      "Suitable for participation based on safety screening evaluations during screening period"
+    ],
+    "exclusion": [
+      "Screen failure: consented but not subsequently randomized based on eligibility criteria",
+      "Participants exposed to study intervention before or without being randomized are excluded from all analysis populations"
+    ]
+  },
+  "medication_guidelines": {
+    "study_medication": "SAR443820 20 mg once daily (QD) orally. Part A: randomized 1:1 to SAR443820 20 mg QD (n=84) or matching placebo QD (n=84). Part B: all participants receive SAR443820 20 mg QD open-label.",
+    "prohibited": [
+      "Permanent modification of background disease-modifying therapy (DMT) during the study period (triggers intercurrent event handling under hypothetical strategy for primary endpoint)",
+      "IMP discontinuation (triggers intercurrent event handling under hypothetical strategy for primary endpoint)"
+    ],
+    "allowed": [
+      "Background disease-modifying therapy (DMT) on top of study intervention where applicable",
+      "Rescue therapy intermittently limited to 2 to 5 days, after which original background DMT is restored at pre-rescue dose (not considered permanent modification of background DMT)",
+      "Concomitant medications as recorded in prior or concomitant medications CRF pages"
+    ]
+  }
+}

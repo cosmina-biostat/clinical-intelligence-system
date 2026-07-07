@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pypdf import PdfReader
+from anthropic import Anthropic
 
 # ── Heart pipeline (uploaded modules) ─────────────────────────────────────────
 from backend.protocol_parser import get_schema, get_rag_store
@@ -13,6 +14,7 @@ from backend.extractor import process_documents
 
 # ── ML inference (this chat's models) ─────────────────────────────────────────
 from backend.inference import assess, classify_review, predict_quality, models_status
+from backend.disease_prediction.disease_models import build_registry, resolve_features
 
 app = FastAPI(title="ClinOrigin AI", version="1.0")
 
@@ -25,6 +27,7 @@ app.add_middleware(
 
 # ── Server-side schema registry (protocol_id -> schema dict) ──────────────────
 SCHEMA_REGISTRY: dict[str, dict] = {}
+DISEASE_REGISTRY = build_registry()
 PROTOCOL_DIR = Path(__file__).parent / "protocols"
 PROTOCOL_DIR.mkdir(exist_ok=True)
 
@@ -71,6 +74,35 @@ def parse_protocol_endpoint(req: ParseRequest):
         "study_name": schema.get("study_name"),
         "indication": schema.get("indication"),
         "field_classification": schema.get("field_classification"),
+        "cached": True,
+    }
+
+
+@app.post("/protocol/parse/upload")
+async def parse_protocol_upload(file: UploadFile = File(...)):
+    """
+    Parse an UPLOADED protocol PDF (drag-and-drop from the dashboard).
+    The file is saved server-side into protocols/, then parsed like the
+    path-based endpoint. Returns the same shape as /protocol/parse.
+    """
+    name = (file.filename or "protocol.pdf")
+    if not name.lower().endswith(".pdf"):
+        raise HTTPException(422, "Only PDF protocols are supported.")
+
+    # Save into the server-side protocols/ folder
+    dest = PROTOCOL_DIR / name
+    raw = await file.read()
+    dest.write_bytes(raw)
+
+    pid = _protocol_id(str(dest))
+    schema = get_schema(str(dest))      # builds RAG index + schema cache
+    SCHEMA_REGISTRY[pid] = schema
+    return {
+        "protocol_id": pid,
+        "study_name": schema.get("study_name"),
+        "indication": schema.get("indication"),
+        "field_classification": schema.get("field_classification"),
+        "saved_path": str(dest),
         "cached": True,
     }
 
@@ -192,7 +224,7 @@ async def analyze_upload_endpoint(
     }
 
 
-# ── RAG chatbox over the protocol ─────────────────────────────────────────────
+# ── RAG chatbox over the protocol (grounded answer) ───────────────────────────
 @app.post("/protocol/ask")
 def ask_endpoint(req: AskRequest):
     if not Path(req.pdf_path).exists():
@@ -200,6 +232,7 @@ def ask_endpoint(req: AskRequest):
     store = get_rag_store(req.pdf_path)
     source = Path(req.pdf_path).name
     hits = store.query(req.question, top_k=req.top_k, source=source)
+
     sources = [
         {
             "section": h["metadata"].get("section"),
@@ -208,14 +241,223 @@ def ask_endpoint(req: AskRequest):
         }
         for h in hits
     ]
-    return {"question": req.question, "sources": sources}
+
+    if not hits:
+        return {
+            "question": req.question,
+            "answer": "Not found in the provided protocol sections.",
+            "sources": [],
+        }
+
+    # Build a grounded prompt: answer ONLY from retrieved passages
+    context_blocks = []
+    for i, h in enumerate(hits, 1):
+        m = h["metadata"]
+        context_blocks.append(
+            f"[Source {i} | section: {m.get('section')}, page: {m.get('page')}]\n{h['text']}"
+        )
+    context = "\n\n".join(context_blocks)
+
+    prompt = f"""You are a clinical protocol assistant. Answer the question using ONLY the context below.
+
+Rules:
+- Use only information present in the context. Do not add outside knowledge.
+- If the context does not contain the answer, reply exactly: "Not found in the provided protocol sections."
+- Cite the source number(s) you used, e.g. [Source 1].
+- Be concise and precise. Quote exact thresholds, doses, and criteria verbatim.
+
+Context:
+{context}
+
+Question: {req.question}
+
+Answer:"""
+
+    try:
+        client = Anthropic()
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        answer = "".join(b.text for b in resp.content if b.type == "text").strip()
+    except Exception as e:
+        # Fall back to passages if the LLM call fails
+        answer = f"(Could not generate answer: {e})"
+
+    return {"question": req.question, "answer": answer, "sources": sources}
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
+@app.get("/protocols/list")
+def list_protocols():
+    """
+    List protocol PDFs available on the server (in protocols/). For each,
+    try to read the cached schema (backend/schema/<stem>_schema.json) to show
+    the indication; if not parsed yet, only the filename is known.
+
+    Returns label like "Multiple Sclerosis — SAP_003".
+    """
+    schema_dir = Path(__file__).parent / "schema"
+    items = []
+    for pdf in sorted(PROTOCOL_DIR.glob("*.pdf")):
+        pid = _protocol_id(str(pdf))
+        indication = None
+        study_name = None
+        acronym = None
+
+        # Prefer the in-memory registry, then the on-disk schema cache
+        if pid in SCHEMA_REGISTRY:
+            sch = SCHEMA_REGISTRY[pid]
+            indication = sch.get("indication")
+            study_name = sch.get("study_name")
+            acronym = sch.get("study_acronym")
+        else:
+            cache = schema_dir / f"{pid}_schema.json"
+            if cache.exists():
+                try:
+                    import json as _json
+                    sch = _json.loads(cache.read_text(encoding="utf-8"))
+                    indication = sch.get("indication")
+                    study_name = sch.get("study_name")
+                    acronym = sch.get("study_acronym")
+                except Exception:
+                    pass
+
+        # Build label: "Acronym — Indication" (fall back gracefully)
+        ind = (indication or "").strip()
+        acr = (acronym or "").strip()
+
+        if acr and ind:
+            label = f"{acr} \u2014 {ind}"
+        elif acr:
+            label = acr
+        elif ind:
+            label = f"{ind} \u2014 {pdf.stem}"
+        else:
+            label = pdf.stem      # not parsed yet: only the filename is known
+
+        items.append({
+            "protocol_id": pid,
+            "filename": pdf.name,
+            "path": str(pdf),
+            "parsed": (pid in SCHEMA_REGISTRY) or (schema_dir / f"{pid}_schema.json").exists(),
+            "indication": indication,
+            "study_name": study_name,
+            "study_acronym": acronym,
+            "label": label,
+        })
+    return {"protocols": items, "count": len(items)}
+
+
+# ── Disease Prediction (clinical risk models, routed by indication) ──────────
+class DiseasePredictRequest(BaseModel):
+    model_key: str          # "cardio" | "ms" | ... from /disease/match or /disease/models
+    features: dict          # raw feature values matching that model's feature_order
+
+
+class PredictFromRecordRequest(BaseModel):
+    indication: str          # protocol's indication, used to pick the model
+    data: dict               # the extracted patient record (rec["data"])
+
+
+@app.post("/disease/predict_from_record")
+def disease_predict_from_record(req: PredictFromRecordRequest):
+    """
+    One-call convenience for the Structured Data table: given a protocol's
+    indication and an already-extracted patient record, match the model,
+    map the record's fields onto that model's feature contract, and predict.
+
+    Never guesses: if required fields can't be resolved from the record,
+    returns available=False with the list of missing/unmappable fields
+    instead of a fabricated prediction.
+    """
+    card = DISEASE_REGISTRY.match_indication(req.indication)
+    if card is None:
+        return {"available": False, "reason": "no_model_for_indication", "missing": []}
+
+    features, missing = resolve_features(card.key, req.data)
+    if features is None:
+        return {"available": False, "reason": "missing_fields", "missing": missing,
+                "model_key": card.key, "model_name": card.display_name}
+
+    try:
+        result = DISEASE_REGISTRY.predict(card.key, features)
+    except NotImplementedError as e:
+        return {"available": False, "reason": "model_not_implemented", "missing": [],
+                "model_key": card.key, "model_name": card.display_name, "detail": str(e)}
+
+    return {
+        "available": True,
+        "model_key": result.model_key,
+        "model_name": result.model_name,
+        "label": result.label,
+        "probability": result.probability,
+    }
+
+
+@app.get("/disease/match")
+def disease_match(indication: str):
+    """
+    Auto-detect which clinical risk model fits a protocol's indication.
+    Returns matched=False if no confident match -- the UI must then let
+    the user pick manually rather than guessing.
+    """
+    card = DISEASE_REGISTRY.match_indication(indication)
+    if card is None:
+        return {"matched": False, "model_key": None,
+                "candidates": [c.key for c in DISEASE_REGISTRY.available()]}
+    return {
+        "matched": True,
+        "model_key": card.key,
+        "display_name": card.display_name,
+        "feature_order": card.feature_order,
+        "notes": card.notes,
+    }
+
+
+@app.get("/disease/models")
+def disease_models_list():
+    """List every registered disease model (for a manual picker)."""
+    return {
+        "models": [
+            {"key": c.key, "display_name": c.display_name,
+             "feature_order": c.feature_order, "notes": c.notes}
+            for c in DISEASE_REGISTRY.available()
+        ]
+    }
+
+
+@app.post("/disease/predict")
+def disease_predict(req: DiseasePredictRequest):
+    """
+    Run the selected model. model_key must come from a prior /disease/match
+    or /disease/models call, confirmed by the user in the UI -- this
+    endpoint does not auto-select a model itself.
+    """
+    try:
+        result = DISEASE_REGISTRY.predict(req.model_key, req.features)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    except NotImplementedError as e:
+        raise HTTPException(501, str(e))
+
+    return {
+        "model_key": result.model_key,
+        "model_name": result.model_name,
+        "label": result.label,
+        "probability": result.probability,
+    }
+
+
 @app.get("/health")
 def health():
     return {
         "status": "ok",
+        "disease_models": [c.key for c in DISEASE_REGISTRY.available()],
         "models": models_status(),
         "protocols_loaded": list(SCHEMA_REGISTRY.keys()),
     }

@@ -72,14 +72,31 @@ def _vectorize(features: dict) -> np.ndarray:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
+# Class ranking used only to compare severity for the guardrail below
+# (Clean < Review < Block). Independent of the label encoder's internal order.
+_SEVERITY_RANK = {"Clean": 0, "Review": 1, "Block": 2}
+
+
 def classify_review(features: dict) -> dict:
     """
-    Review classification with the clinical safety rule applied:
-      Block if P(Block) >= block_threshold, else argmax.
+    Review classification with TWO layers of safety on top of the ML model's
+    raw prediction, applied in order:
+
+      1. Probabilistic Block escalation: Block if P(Block) >= block_threshold.
+      2. Deterministic critical-field guardrail: if a required field is
+         missing (critical_fields_missing > 0), the verdict can never be
+         'Clean' -- minimum 'Review' -- REGARDLESS of what the model
+         predicts. This exists because the model's training signal for
+         extraction_confidence is a constant 1.0 in production (see
+         feature_engineering.py TODO), unlike its variable, informative role
+         during training -- so the model alone cannot be fully trusted to
+         catch every case where a required field is missing. A deterministic
+         rule closes that gap rather than relying solely on ML recall.
 
     Returns:
       {label, probabilities: {Clean, Review, Block}, block_probability,
-       safety_rule_applied}
+       safety_rule_applied, guardrail_applied}
     """
     _M.load()
     X = _vectorize(features)
@@ -92,20 +109,29 @@ def classify_review(features: dict) -> dict:
     pred_idx = int(np.argmax(proba))
     safety_applied = False
 
-    # Safety override: escalate to Block if its probability clears the threshold
+    # Layer 1: probabilistic Block escalation (existing)
     if _M.block_threshold is not None and _M.block_idx is not None:
         if proba[_M.block_idx] >= _M.block_threshold and pred_idx != _M.block_idx:
             pred_idx = _M.block_idx
             safety_applied = True
 
-    label = _M.label_encoder.inverse_transform([pred_idx])[0]
+    label = str(_M.label_encoder.inverse_transform([pred_idx])[0])
+
+    # Layer 2: deterministic critical-field guardrail (new)
+    guardrail_applied = False
+    critical_missing = features.get("critical_fields_missing", 0) or 0
+    if critical_missing > 0 and _SEVERITY_RANK.get(label, 0) < _SEVERITY_RANK["Review"]:
+        label = "Review"
+        guardrail_applied = True
+
     block_prob = float(proba[_M.block_idx]) if _M.block_idx is not None else None
 
     return {
-        "label": str(label),
+        "label": label,
         "probabilities": prob_map,
         "block_probability": round(block_prob, 4) if block_prob is not None else None,
         "safety_rule_applied": safety_applied,
+        "guardrail_applied": guardrail_applied,
         "block_threshold": _M.block_threshold,
     }
 
@@ -134,6 +160,7 @@ def assess(features: dict) -> dict:
         "critical_fields_missing": features.get("critical_fields_missing"),
         "high_severity_flags": features.get("high_severity_flags"),
         "total_flags": features.get("total_flags"),
+        "guardrail_applied": review.get("guardrail_applied", False),
     }
 
     return {

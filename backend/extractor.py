@@ -15,11 +15,16 @@ _matcher = FieldMatcher()
 def extract_data(schema: dict, source_text: str) -> dict:
 
     # 1. Prompt
-    # Build the list of fields to extract from field_classification
+    # Build the list of fields to extract from field_classification.
+    # Includes permissible fields too -- otherwise fields like disease-risk
+    # covariates (e.g. bmi, cholesterol, smoking) that a protocol lists as
+    # "permissible" are never even mentioned to the LLM and can never be
+    # extracted, even when they're clearly present in the source text.
     classification = schema.get("field_classification", {})
     fields_to_extract = (
-        classification.get("required", []) 
+        classification.get("required", [])
         + classification.get("expected", [])
+        + classification.get("permissible", [])
     )
 
     # 1. Prompt
@@ -128,4 +133,3 @@ def process_documents(schema: dict, documents: list) -> list:
         })
     
     return complete_records
-

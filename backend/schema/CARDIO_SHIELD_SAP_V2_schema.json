@@ -1,0 +1,231 @@
+{
+  "study_name": "A Multi-Centre, Randomised, Double-Blind, Placebo-Controlled Study Evaluating the Efficacy and Safety of CVS-221 in Adults with Elevated Cardiovascular Risk",
+  "study_acronym": "CARDIO-SHIELD",
+  "indication": "Cardiovascular Disease Prevention (Primary Prevention in High-Risk Adults)",
+  "study_type": "Phase 3, multi-centre, randomised, double-blind, placebo-controlled, parallel-group study",
+  "protocol_version": "Edition 2.0, dated 14 March 2025 (Study Code: CVS-2201-GLB)",
+  "visit_structure": {
+    "Screening": {
+      "timepoint": "Day -28 to Day -1",
+      "assessments": [
+        "Eligibility",
+        "vitals",
+        "labs",
+        "ECG"
+      ]
+    },
+    "Baseline": {
+      "timepoint": "Day 1",
+      "assessments": [
+        "Randomisation",
+        "baseline vitals",
+        "baseline labs"
+      ]
+    },
+    "Visit 2": {
+      "timepoint": "Week 4",
+      "assessments": [
+        "Vitals",
+        "tolerability",
+        "AE review"
+      ]
+    },
+    "Visit 3": {
+      "timepoint": "Week 12",
+      "assessments": [
+        "Vitals",
+        "labs",
+        "AE review"
+      ]
+    },
+    "Visit 4": {
+      "timepoint": "Week 26",
+      "assessments": [
+        "Vitals",
+        "labs",
+        "AE review"
+      ]
+    },
+    "Visit 5": {
+      "timepoint": "Week 52",
+      "assessments": [
+        "End of treatment assessments"
+      ]
+    },
+    "Follow-up": {
+      "timepoint": "Week 60",
+      "assessments": [
+        "Safety follow-up call"
+      ]
+    }
+  },
+  "field_definitions": {
+    "age": {
+      "description": "Age at screening",
+      "coding_units": "years"
+    },
+    "sex": {
+      "description": "Biological sex",
+      "coding_units": "Female / Male"
+    },
+    "height": {
+      "description": "Standing height",
+      "coding_units": "cm"
+    },
+    "weight": {
+      "description": "Body weight",
+      "coding_units": "kg"
+    },
+    "bmi": {
+      "description": "Body mass index (calculated)",
+      "coding_units": "kg/m^2"
+    },
+    "systolic_bp": {
+      "description": "Systolic blood pressure",
+      "coding_units": "mmHg"
+    },
+    "diastolic_bp": {
+      "description": "Diastolic blood pressure",
+      "coding_units": "mmHg"
+    },
+    "cholesterol": {
+      "description": "Fasting total cholesterol category",
+      "coding_units": "1=normal, 2=above normal, 3=well above normal"
+    },
+    "glucose": {
+      "description": "Fasting glucose category",
+      "coding_units": "1=normal, 2=above normal, 3=well above normal"
+    },
+    "smoking": {
+      "description": "Current smoking status",
+      "coding_units": "0=no, 1=yes"
+    },
+    "alcohol": {
+      "description": "Regular alcohol consumption",
+      "coding_units": "0=no, 1=yes"
+    },
+    "physical_activity": {
+      "description": "Regular physical activity",
+      "coding_units": "0=no, 1=yes"
+    }
+  },
+  "field_classification": {
+    "required": [
+      "patient_id",
+      "age",
+      "sex"
+    ],
+    "expected": [
+      "height",
+      "weight",
+      "systolic_bp",
+      "diastolic_bp",
+      "glucose",
+      "adverse_events",
+      "concomitant_medications",
+      "eligibility_confirmed"
+    ],
+    "permissible": [
+      "bmi",
+      "cholesterol",
+      "smoking",
+      "alcohol",
+      "physical_activity"
+    ]
+  },
+  "validation_rules": {
+    "adverse_events": "Graded according to CTCAE v5.0; recorded from informed consent through 30 days after last dose; serious adverse events reported to sponsor within 24 hours of investigator awareness",
+    "stopping_rules": [
+      "Sustained systolic blood pressure >= 200 mmHg or diastolic blood pressure >= 120 mmHg",
+      "Any Grade 4 treatment-related adverse event",
+      "Investigator or participant decision to discontinue for safety reasons"
+    ],
+    "systolic_bp_screening": "Average of 3 readings at screening",
+    "missing_data": "Missing data for continuous secondary endpoints handled using MMRM; no imputation for primary time-to-event endpoint; participants without an event censored at last known event-free date",
+    "sex_coding": "1 = female, 2 = male for analysis purposes",
+    "cholesterol_coding": "1 = normal, 2 = above normal, 3 = well above normal",
+    "glucose_coding": "1 = normal, 2 = above normal, 3 = well above normal"
+  },
+  "validation_ranges": {
+    "age": {
+      "years": {
+        "min": 18,
+        "max": 75
+      }
+    },
+    "bmi": {
+      "kg/m^2": {
+        "min": 20,
+        "max": 40
+      }
+    },
+    "systolic_bp": {
+      "mmHg": {
+        "min": 120,
+        "max": 179
+      }
+    },
+    "diastolic_bp": {
+      "mmHg": {
+        "min": 80,
+        "max": 109
+      }
+    },
+    "egfr": {
+      "mL/min/1.73m^2": {
+        "min": 30,
+        "max": null
+      }
+    }
+  },
+  "data_types": {
+    "age": "continuous (integer, years)",
+    "sex": "categorical (Female / Male; coded 1=female, 2=male)",
+    "height": "continuous (cm)",
+    "weight": "continuous (kg)",
+    "bmi": "continuous, calculated (kg/m^2)",
+    "systolic_bp": "continuous (mmHg)",
+    "diastolic_bp": "continuous (mmHg)",
+    "cholesterol": "ordinal categorical (1=normal, 2=above normal, 3=well above normal)",
+    "glucose": "ordinal categorical (1=normal, 2=above normal, 3=well above normal)",
+    "smoking": "binary (0=no, 1=yes)",
+    "alcohol": "binary (0=no, 1=yes)",
+    "physical_activity": "binary (0=no, 1=yes)"
+  },
+  "eligibility_criteria": {
+    "inclusion": [
+      "Age 18 to 75 years, inclusive, at the time of screening",
+      "Male or female participants",
+      "BMI between 20 and 40 kg/m^2, inclusive",
+      "Systolic blood pressure between 120 and 179 mmHg, inclusive, at screening (average of 3 readings)",
+      "Diastolic blood pressure between 80 and 109 mmHg, inclusive, at screening",
+      "Fasting total cholesterol classified as normal, above normal, or well above normal per central laboratory reference ranges",
+      "Fasting glucose classified as normal, above normal, or well above normal per central laboratory reference ranges",
+      "At least one additional cardiovascular risk factor: current smoking, physical inactivity, or a first-degree relative with premature cardiovascular disease",
+      "Willing and able to provide written informed consent and comply with study visits"
+    ],
+    "exclusion": [
+      "Prior myocardial infarction, stroke, or coronary revascularisation within 6 months of screening",
+      "Systolic blood pressure >= 180 mmHg or diastolic blood pressure >= 110 mmHg at screening",
+      "BMI < 20 kg/m^2 or > 40 kg/m^2",
+      "Known hypersensitivity to CVS-221 or its excipients",
+      "Current participation in another interventional clinical study",
+      "Pregnancy or breastfeeding at screening",
+      "Estimated glomerular filtration rate (eGFR) < 30 mL/min/1.73m^2",
+      "Any condition that, in the investigator's judgement, would compromise participant safety or the integrity of study data"
+    ]
+  },
+  "medication_guidelines": {
+    "study_medication": "CVS-221 50 mg oral film-coated tablet once daily, taken orally in the morning with or without food, for 52 weeks; dose reduction to 25 mg once daily permitted for participants who do not tolerate the 50 mg dose at investigator's discretion following documented tolerability assessment; matching placebo tablets identical in appearance, taste, and packaging",
+    "prohibited": [
+      "Other investigational lipid-lowering or antihypertensive agents",
+      "Strong CYP3A4 inhibitors or inducers within 14 days prior to randomisation",
+      "Systemic corticosteroids for more than 14 consecutive days during the treatment period"
+    ],
+    "allowed": [
+      "Stable-dose statins, provided the dose has not changed within 8 weeks prior to screening",
+      "Low-dose aspirin for cardiovascular prophylaxis",
+      "Standard antihypertensive therapy at a stable dose"
+    ]
+  }
+}

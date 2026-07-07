@@ -1,0 +1,29 @@
+{
+  "study_name": "An Open-Label, Multi-Centre, Safety Study of Fixed-Dose Durvalumab + Tremelimumab Combination Therapy or Durvalumab Monotherapy in Advanced Solid Malignancies (STRONG)",
+  "indication": "Advanced Solid Malignancies",
+  "study_type": "Open-Label, Multi-Centre, Safety Study",
+  "protocol_version": "5.0 (Protocol dated 13 December 2019); SAP Edition 3.0 (dated 21 July 2020)",
+  "visit_structure": null,
+  "field_definitions": null,
+  "field_classification": {
+    "required": [
+      "patient_id",
+      "age",
+      "sex"
+    ],
+    "expected": [],
+    "permissible": []
+  },
+  "validation_rules": null,
+  "validation_ranges": {},
+  "data_types": null,
+  "eligibility_criteria": {
+    "inclusion": [],
+    "exclusion": []
+  },
+  "medication_guidelines": {
+    "study_medication": "Fixed-dose Durvalumab + Tremelimumab combination therapy or Durvalumab monotherapy",
+    "prohibited": [],
+    "allowed": []
+  }
+}
