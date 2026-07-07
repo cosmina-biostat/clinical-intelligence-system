@@ -1,6 +1,6 @@
 """
-Risk Prediction + Anomaly Detection — combined patient checker.
-Loads pre-trained LightGBM pipeline and Isolation Forest from models/saved/.
+Patient Risk & Anomaly Checker
+LightGBM cardiovascular risk · Isolation Forest anomaly detection · SHAP explanations
 """
 import numpy as np
 import pandas as pd
@@ -12,77 +12,98 @@ from pathlib import Path
 
 st.set_page_config(page_title="Patient Risk & Anomaly", page_icon="🫀", layout="wide")
 
-FEATURES = ["age_years", "gender", "height", "weight", "bmi",
-            "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
-NUMERIC  = ["age_years", "height", "weight", "bmi", "ap_hi", "ap_lo"]
-CODED    = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+    --green:#2e7d32; --amber:#f9a825; --red:#c62828;
+    --ink:#1a2027; --muted:#5b6670; --line:#e6e9ec; --accent:#1565c0;
+}
+html, body, [class*="css"] { font-family:'Inter',system-ui,sans-serif; }
+.main .block-container { max-width:1050px; padding-top:1.5rem; }
+h1 { font-size:22px !important; font-weight:700 !important; color:#1a2027 !important; letter-spacing:-0.02em; }
+h2,h3 { color:#1a2027 !important; }
+[data-testid="stMetricValue"] { color:#1565c0 !important; font-size:26px !important; font-weight:700 !important; }
+[data-testid="stMetricLabel"] { color:#5b6670 !important; font-size:12px !important; font-weight:600 !important;
+    text-transform:uppercase; letter-spacing:0.04em; }
+.stButton > button { background:#1565c0 !important; color:#fff !important; border:none !important;
+    border-radius:8px !important; font-weight:600 !important; font-size:13px !important; padding:8px 16px !important; }
+.stButton > button:hover { background:#1976d2 !important; }
+.section-label { color:#5b6670; font-size:11px; font-weight:600; text-transform:uppercase;
+    letter-spacing:0.08em; margin:8px 0 4px 0; }
+.answer-box { background:#f7f9fb; border:1px solid #d9e2ec; border-left:3px solid #1565c0;
+    border-radius:10px; padding:14px 18px; margin:12px 0; font-size:14px; line-height:1.6; color:#1a2027; }
+</style>
+""", unsafe_allow_html=True)
+
+FEATURES   = ["age_years", "gender", "height", "weight", "bmi",
+              "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
+NUMERIC    = ["age_years", "height", "weight", "bmi", "ap_hi", "ap_lo"]
+CODED      = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
 MODELS_DIR = Path("models/saved")
+
+FEATURE_LABELS = {
+    "age_years": "Age", "gender": "Gender", "height": "Height",
+    "weight": "Weight", "bmi": "BMI", "ap_hi": "Systolic BP",
+    "ap_lo": "Diastolic BP", "cholesterol": "Cholesterol",
+    "gluc": "Glucose", "smoke": "Smoke", "alco": "Alcohol",
+    "active": "Physically Active",
+}
 
 
 @st.cache_resource(show_spinner=False)
 def load_model():
-    pkl = MODELS_DIR / "lgbm_model_cardio.pkl"
-    if pkl.exists():
-        return joblib.load(pkl)
-    return None
-
+    p = MODELS_DIR / "lgbm_model_cardio.pkl"
+    return joblib.load(p) if p.exists() else None
 
 @st.cache_resource(show_spinner=False)
 def load_scaler():
-    pkl = MODELS_DIR / "lgbm_scaler_cardio.pkl"
-    if pkl.exists():
-        return joblib.load(pkl)
-    return None
-
+    p = MODELS_DIR / "lgbm_scaler_cardio.pkl"
+    return joblib.load(p) if p.exists() else None
 
 @st.cache_resource(show_spinner=False)
 def load_iso():
-    pkl = MODELS_DIR / "iso_forest_cardio.pkl"
-    if pkl.exists():
-        return joblib.load(pkl)
-    return None
-
+    p = MODELS_DIR / "iso_forest_cardio.pkl"
+    return joblib.load(p) if p.exists() else None
 
 @st.cache_resource(show_spinner=False)
 def get_explainer(_model):
     return shap.TreeExplainer(_model)
 
 
-# ── Load models ───────────────────────────────────────────────────────────────
 model  = load_model()
 scaler = load_scaler()
 iso    = load_iso()
 
 if model is None or scaler is None:
-    st.error("Prediction model not found. Pre-trained model file is missing from models/saved/.")
+    st.error("Model files not found in models/saved/. Run the training script first.")
     st.stop()
 
 # ── Header ────────────────────────────────────────────────────────────────────
-st.title("🫀 Patient Risk & Anomaly Checker")
+st.markdown("# 🫀 Patient Risk & Anomaly Checker")
 st.caption("LightGBM cardiovascular risk · Isolation Forest anomaly detection · 68,595 patient training cohort")
-
-st.divider()
+st.markdown("<hr style='border-color:#e6e9ec;margin:8px 0 16px 0'>", unsafe_allow_html=True)
 
 # ── Patient input ─────────────────────────────────────────────────────────────
-st.subheader("Enter patient details")
+st.markdown("<div class='section-label'>Patient details</div>", unsafe_allow_html=True)
 
 c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown("**Demographics**")
-    age    = st.number_input("Age (years)", min_value=20, max_value=90,  value=50, step=1)
+    age    = st.number_input("Age (years)",   min_value=20, max_value=90,  value=50, step=1)
     sex    = st.selectbox("Sex", ["Female", "Male"])
-    height = st.number_input("Height (cm)", min_value=130, max_value=210, value=165, step=1)
-    weight = st.number_input("Weight (kg)", min_value=35,  max_value=180, value=70,  step=1)
+    height = st.number_input("Height (cm)",  min_value=130, max_value=210, value=165, step=1)
+    weight = st.number_input("Weight (kg)",  min_value=35,  max_value=180, value=70,  step=1)
 
 with c2:
     st.markdown("**Vitals**")
-    ap_hi  = st.number_input("Systolic BP (mmHg)",  min_value=80,  max_value=220, value=120, step=1)
-    ap_lo  = st.number_input("Diastolic BP (mmHg)", min_value=50,  max_value=140, value=80,  step=1)
-    chol   = st.selectbox("Cholesterol", [1, 2, 3],
-               format_func=lambda v: {1:"Normal", 2:"Above normal", 3:"Well above normal"}[v])
-    gluc   = st.selectbox("Glucose", [1, 2, 3],
-               format_func=lambda v: {1:"Normal", 2:"Above normal", 3:"Well above normal"}[v])
+    ap_hi = st.number_input("Systolic BP (mmHg)",  min_value=80,  max_value=220, value=120, step=1)
+    ap_lo = st.number_input("Diastolic BP (mmHg)", min_value=50,  max_value=140, value=80,  step=1)
+    chol  = st.selectbox("Cholesterol", [1, 2, 3],
+                format_func=lambda v: {1: "Normal", 2: "Above normal", 3: "Well above normal"}[v])
+    gluc  = st.selectbox("Glucose", [1, 2, 3],
+                format_func=lambda v: {1: "Normal", 2: "Above normal", 3: "Well above normal"}[v])
 
 with c3:
     st.markdown("**Lifestyle**")
@@ -93,16 +114,16 @@ with c3:
     st.metric("Computed BMI", bmi)
 
 row_df = pd.DataFrame([{
-    "age_years": age, "gender": 1 if sex == "Female" else 2,
-    "height": height, "weight": weight, "bmi": bmi,
-    "ap_hi": ap_hi, "ap_lo": ap_lo,
+    "age_years": age,  "gender": 1 if sex == "Female" else 2,
+    "height": height,  "weight": weight,   "bmi": bmi,
+    "ap_hi": ap_hi,    "ap_lo": ap_lo,
     "cholesterol": chol, "gluc": gluc,
     "smoke": int(smoke), "alco": int(alco), "active": int(active),
 }])
 
-st.divider()
+st.markdown("<hr style='border-color:#e6e9ec;margin:16px 0'>", unsafe_allow_html=True)
 
-# ── Preprocess + predict ──────────────────────────────────────────────────────
+# ── Predict ───────────────────────────────────────────────────────────────────
 num_scaled = scaler.transform(row_df[NUMERIC])
 X_ready    = np.hstack([num_scaled, row_df[CODED].values])
 
@@ -113,40 +134,46 @@ color = {"Low": "#2e7d32", "Moderate": "#f9a825", "High": "#c62828"}[band]
 if iso is not None:
     flag  = iso.predict(row_df[FEATURES])[0]
     score = float(iso.decision_function(row_df[FEATURES])[0])
-    zone  = "Anomalous (< 0)" if score < 0 else ("Borderline (≈ 0)" if score < 0.05 else "Normal (> 0)")
+    zone  = ("Anomalous (< 0)" if score < 0
+             else ("Borderline (≈ 0)" if score < 0.05 else "Normal (> 0)"))
 else:
     flag, score, zone = 1, 0.0, "Model unavailable"
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("CVD Risk Score", f"{prob * 100:.1f}%")
-m2.markdown(f"<div style='padding-top:0.4rem'><b>Risk level</b><br><span style='font-size:1.4rem;color:{color}'>{band}</span></div>", unsafe_allow_html=True)
+m2.markdown(
+    f"<div style='padding-top:0.4rem'><b>Risk level</b><br>"
+    f"<span style='font-size:1.4rem;color:{color};font-weight:700'>{band}</span></div>",
+    unsafe_allow_html=True)
 m3.metric("Anomaly Score", f"{score:.4f}", help="Negative = unusual profile. Positive = typical.")
 m4.metric("Profile zone", zone)
 
 st.progress(prob)
 
 if flag == -1:
-    st.warning("⚠️ **Anomalous profile** — this patient's vitals are unusual relative to the 68,595-patient cohort. Possible data-entry error or rare physiology — recommend clinical review.")
+    st.markdown(
+        "<div class='answer-box' style='border-left-color:#c62828'>"
+        "⚠️ <b>Anomalous profile</b> — this patient's vitals are unusual relative to the "
+        "68,595-patient cohort. Possible data-entry error or rare physiology — recommend clinical review."
+        "</div>", unsafe_allow_html=True)
 else:
-    st.success("✅ Patient profile is **typical** for the cardiovascular cohort.")
+    st.markdown(
+        "<div class='answer-box' style='border-left-color:#2e7d32'>"
+        "✅ Patient profile is <b>typical</b> for the cardiovascular cohort."
+        "</div>", unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<hr style='border-color:#e6e9ec;margin:16px 0'>", unsafe_allow_html=True)
 
 # ── SHAP ──────────────────────────────────────────────────────────────────────
+st.markdown("<div class='section-label'>Feature contribution for this patient</div>",
+            unsafe_allow_html=True)
 st.subheader("What is driving this patient's risk?")
-st.caption("Each bar shows how strongly a feature pushed the risk score up (red) or down (green) for this specific patient.")
+st.caption("Each bar shows how strongly a feature pushed the risk score up (red) or down (green).")
 
 explainer = get_explainer(model)
 sv = explainer.shap_values(X_ready)
 sv = sv[1] if isinstance(sv, list) else sv
 sv = np.array(sv).ravel()
-FEATURE_LABELS = {
-    "age_years": "Age", "gender": "Gender", "height": "Height",
-    "weight": "Weight", "bmi": "BMI", "ap_hi": "Systolic BP",
-    "ap_lo": "Diastolic BP", "cholesterol": "Cholesterol",
-    "gluc": "Glucose", "smoke": "Smoke", "alco": "Alcohol",
-    "active": "Physically Active",
-}
 
 order  = np.argsort(np.abs(sv))[::-1]
 names  = [FEATURE_LABELS[FEATURES[i]] for i in order]
@@ -171,7 +198,7 @@ with st.expander("How to interpret the anomaly score"):
 | -0.05 to 0 | Mildly unusual |
 | < -0.05 | Clearly anomalous — flag for review |
 
-The Isolation Forest was trained with `contamination=0.02` — it expects roughly **2% of records** in any real population to be anomalous.
+The Isolation Forest was trained with `contamination=0.02` — it expects roughly **2% of records** to be anomalous.
     """)
 
 with st.expander("About the models"):
