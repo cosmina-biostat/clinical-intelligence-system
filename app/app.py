@@ -70,7 +70,7 @@ with c2:
     st.markdown("""
     <div class='tile'>
         <div class='tile-icon'>📄</div>
-        <div class='tile-title'>Documents — ClinOrigin AI</div>
+        <div class='tile-title'>Documents — CDIM System</div>
         <div class='tile-desc'>Turn clinical study protocols into structured, validated
             data — with grounded Q&amp;A and traffic-light review verdicts.</div>
         <div class='tile-feat'>• Protocol parsing &amp; RAG chat</div>

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-st.set_page_config(page_title="Documents — ClinOrigin", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Documents — CDIM System", page_icon="📄", layout="wide")
 
 st.markdown("""
 <style>
@@ -147,9 +147,13 @@ def get_cached_predictions():
                     predictions.append({"available": False, "reason": "missing_fields", "missing": missing})
                     continue
                 try:
-                    result = model_card.predict_fn(features)
-                    predictions.append({"available": True, "label": result["label"],
-                                        "probability": result["probability"]})
+                    row = pd.DataFrame(
+                        [[features[f] for f in model_card.feature_order]],
+                        columns=model_card.feature_order,
+                    )
+                    result = model_card.predict_fn(row)
+                    predictions.append({"available": True, "label": result.label,
+                                        "probability": result.probability})
                 except Exception:
                     predictions.append({"available": False, "reason": "model_not_implemented"})
         st.session_state._pred_cache     = predictions
@@ -312,7 +316,7 @@ elif page == "Extraction":
                     for rec in records:
                         verdict = assess(rec["features"])
                         rec["review_status"] = verdict.get("review_status", "Review")
-                        rec["review_detail"] = verdict
+                        rec["review_detail"] = verdict.get("review_detail", {})
                         rec["quality_score"]  = verdict.get("quality_score")
                         rec["patient_id"]     = rec["data"].get("patient_id")
                     st.session_state.records         = records
