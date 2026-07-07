@@ -136,7 +136,7 @@ def get_cached_predictions():
     cache_key = f"{indication}|{fingerprint}"
     if st.session_state._pred_cache_key != cache_key:
         with st.spinner("Computing risk predictions..."):
-            model_card  = registry.match(indication)
+            model_card  = registry.match_indication(indication)
             predictions = []
             for rec in st.session_state.records:
                 if model_card is None:
