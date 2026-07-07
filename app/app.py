@@ -13,7 +13,7 @@ We exist to put the power of machine learning directly in the hands of clinician
 no data science degree required.
 """)
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown("### 🫀 Patient Risk & Anomaly Checker")
@@ -24,12 +24,20 @@ with col1:
     st.page_link("pages/01_predict.py", label="Open Patient Checker →")
 
 with col2:
+    st.markdown("### 📋 Batch Screening")
+    st.markdown(
+        "Upload doctor letters or nurse notices as PDFs. Claude reads each one, "
+        "extracts the clinical fields, and scores every patient automatically."
+    )
+    st.page_link("pages/02_batch_screening.py", label="Open Batch Screening →")
+
+with col3:
     st.markdown("### 📄 Document Q&A")
     st.markdown(
         "Ask any question about a clinical protocol PDF in plain English. "
         "Claude AI retrieves the relevant passage and answers with the source quoted back."
     )
-    st.page_link("pages/02_documents.py", label="Open Document Q&A →")
+    st.page_link("pages/03_documents.py", label="Open Document Q&A →")
 
 st.divider()
 st.caption(
