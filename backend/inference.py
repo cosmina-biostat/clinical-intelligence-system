@@ -128,16 +128,28 @@ def assess(features: dict) -> dict:
     review = classify_review(features)
     quality = predict_quality(features)
 
+    total_flags      = int(features.get("total_flags", 0) or 0)
+    high_sev_flags   = int(features.get("high_severity_flags", 0) or 0)
+    critical_missing = int(features.get("critical_fields_missing", 0) or 0)
+
+    # Rule-based overrides: the ML model can under-weight flags.
+    # Any flags → minimum Review; high-severity or critical missing → Block.
+    label = review["label"]
+    if label == "Clean" and total_flags >= 1:
+        label = "Review"
+    if label != "Block" and (high_sev_flags >= 1 or critical_missing >= 1):
+        label = "Block"
+
     # Audit trail: surface the features that drove the decision
     drivers = {
-        "completeness_score": features.get("completeness_score"),
-        "critical_fields_missing": features.get("critical_fields_missing"),
-        "high_severity_flags": features.get("high_severity_flags"),
-        "total_flags": features.get("total_flags"),
+        "completeness_score":    features.get("completeness_score"),
+        "critical_fields_missing": critical_missing,
+        "high_severity_flags":   high_sev_flags,
+        "total_flags":           total_flags,
     }
 
     return {
-        "review_status": review["label"],
+        "review_status": label,
         "review_detail": review,
         "quality_score": quality,
         "decision_drivers": drivers,
