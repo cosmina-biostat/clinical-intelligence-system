@@ -25,9 +25,11 @@ data/synthetic/*
 !data/processed/.gitkeep
 !data/synthetic/.gitkeep
 
-# Trained models — too large for GitHub
-models/saved/*
-!models/saved/.gitkeep
+# Trained models — commit small ones, exclude large RF (191 MB)
+models/saved/random_forest_cardio.pkl
+
+# Local training recipes — reference only, not needed on GitHub
+scripts/
 
 # OS
 .DS_Store
@@ -44,3 +46,4 @@ reports/figures/*
 # API keys — NEVER commit these
 .env
 *.key
+.env

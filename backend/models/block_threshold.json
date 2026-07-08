@@ -1,0 +1,7 @@
+{
+  "model": "XGBoost",
+  "block_threshold": 0.05,
+  "target_recall": 0.95,
+  "decision_rule": "Block if P(Block) >= threshold else argmax",
+  "validation_tuned": true
+}

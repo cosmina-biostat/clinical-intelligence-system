@@ -13,7 +13,18 @@ MODELS_DIR  = ROOT / "models" / "saved"
 REPORTS_DIR = ROOT / "reports"
 
 # ── API keys ───────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# Reads from .env locally; falls back to Streamlit Cloud secrets when deployed
+def _get_api_key():
+    key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not key:
+        try:
+            import streamlit as st
+            key = st.secrets.get("ANTHROPIC_API_KEY", "")
+        except Exception:
+            pass
+    return key
+
+ANTHROPIC_API_KEY = _get_api_key()
 KAGGLE_USERNAME   = os.getenv("KAGGLE_USERNAME", "")
 KAGGLE_KEY        = os.getenv("KAGGLE_KEY", "")
 

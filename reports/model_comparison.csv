@@ -1,0 +1,5 @@
+classifier,dataset,roc_auc,f1,precision,recall,accuracy
+logistic_regression,cardio,0.795,0.7092,0.7602,0.6647,0.7304
+random_forest,cardio,0.7759,0.7088,0.7211,0.6969,0.7167
+xgboost,cardio,0.7961,0.7167,0.756,0.6813,0.7336
+lightgbm,cardio,0.8065,0.7198,0.7559,0.687,0.7354
