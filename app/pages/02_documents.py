@@ -390,13 +390,69 @@ elif page == "Structured":
                 row["risk_probability"] = None
             rows.append(row)
 
-        st.dataframe(rows, use_container_width=True)
+        df = pd.DataFrame(rows)
+        st.dataframe(
+            df,
+            use_container_width=True,
+            column_config={
+                "risk_probability": st.column_config.ProgressColumn(
+                    "Risk Probability",
+                    min_value=0,
+                    max_value=1,
+                    format="%.1%",
+                )
+            },
+        )
         all_keys = list(dict.fromkeys(k for r in rows for k in r))
         buf = io.StringIO()
         w = csv.DictWriter(buf, fieldnames=all_keys)
         w.writeheader(); w.writerows(rows)
         st.download_button("Download CSV", buf.getvalue(),
-                           file_name="clinorigin_records.csv", mime="text/csv")
+                           file_name="cdim_records.csv", mime="text/csv")
+
+        # ── Per-patient risk probability cards ─────────────────────────────────
+        st.markdown("<hr style='border-color:#e6e9ec;margin:16px 0'>", unsafe_allow_html=True)
+        st.markdown("<div class='section-label'>Risk probability by patient</div>",
+                    unsafe_allow_html=True)
+
+        for i, (rec, pred) in enumerate(zip(st.session_state.records, predictions)):
+            pid = (rec.get("patient_id") or rec["data"].get("patient_id")
+                   or f"Patient {i + 1}")
+            if pred and pred.get("available"):
+                prob  = pred["probability"]
+                label = pred["label"]
+                color = ("#c62828" if prob >= 0.66
+                         else "#f9a825" if prob >= 0.33 else "#2e7d32")
+                st.markdown(
+                    f"<div style='font-size:12px;font-weight:600;color:#5b6670;"
+                    f"margin-bottom:2px'>{pid}</div>",
+                    unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='font-size:13px;color:{color};font-weight:600;"
+                    f"margin-bottom:6px'>{label}</div>",
+                    unsafe_allow_html=True)
+                st.progress(prob, text=f"{prob:.1%}")
+                st.markdown("<div style='margin-bottom:14px'></div>",
+                            unsafe_allow_html=True)
+            elif pred and pred.get("reason") == "missing_fields":
+                missing = pred.get("missing", [])
+                st.markdown(
+                    f"<div style='font-size:12px;font-weight:600;color:#5b6670;"
+                    f"margin-bottom:2px'>{pid}</div>",
+                    unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='answer-box' style='border-left-color:#f9a825'>"
+                    f"⚠️ <b>Insufficient data</b> — missing fields: "
+                    f"<code>{', '.join(missing)}</code><br>"
+                    f"<span style='font-size:12px;color:#5b6670'>Ensure the source "
+                    f"text contains these values and re-run extraction.</span></div>",
+                    unsafe_allow_html=True)
+            elif pred and pred.get("reason") == "no_model_for_indication":
+                st.markdown(
+                    f"<div class='answer-box' style='border-left-color:#c9d2da'>"
+                    f"ℹ️ <b>{pid}</b> — no risk model available for this indication."
+                    f"</div>",
+                    unsafe_allow_html=True)
 
 
 # ── MONITORING ────────────────────────────────────────────────────────────────
