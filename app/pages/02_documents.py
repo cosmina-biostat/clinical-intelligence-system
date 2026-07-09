@@ -477,23 +477,38 @@ elif page == "Structured":
 
                 # Quality
                 qs = rec.get("quality_score") or 0
-                qcolor = "#2e7d32" if qs >= 0.8 else ("#f9a825" if qs >= 0.5 else "#c62828")
+                qcolor = "#2e7d32" if qs >= 0.8 else ("#f9a825" if qs >= 0.6 else "#c62828")
                 c2.markdown(
                     f"<div style='text-align:center;padding:10px'>"
                     f"<div style='font-size:22px;font-weight:700;color:{qcolor}'>{qs:.0%}</div>"
-                    f"<div style='font-size:11px;color:#5b6670'>Quality score</div></div>",
+                    f"<div style='font-size:11px;color:#5b6670;margin-bottom:6px'>Quality score</div>"
+                    f"<div style='background:#e6e9ec;border-radius:6px;height:8px;width:100%'>"
+                    f"<div style='background:{qcolor};width:{qs*100:.0f}%;height:8px;border-radius:6px'>"
+                    f"</div></div></div>",
                     unsafe_allow_html=True)
-                c2.progress(qs)
+
+                # Completeness
+                cs = rec["features"].get("completeness_score") or 0
+                ccolor = "#2e7d32" if cs >= 1.0 else ("#f9a825" if cs >= 0.6 else "#c62828")
+                c3.markdown(
+                    f"<div style='text-align:center;padding:10px'>"
+                    f"<div style='font-size:22px;font-weight:700;color:{ccolor}'>{cs:.0%}</div>"
+                    f"<div style='font-size:11px;color:#5b6670;margin-bottom:6px'>Completeness</div>"
+                    f"<div style='background:#e6e9ec;border-radius:6px;height:8px;width:100%'>"
+                    f"<div style='background:{ccolor};width:{cs*100:.0f}%;height:8px;border-radius:6px'>"
+                    f"</div></div></div>",
+                    unsafe_allow_html=True)
 
                 # Flags
                 total_flags = int(rec["features"].get("total_flags", 0))
                 high_flags  = int(rec["features"].get("high_severity_flags", 0))
                 flag_color  = "#c62828" if high_flags > 0 else ("#f9a825" if total_flags > 0 else "#2e7d32")
-                c3.markdown(
-                    f"<div style='text-align:center;padding:10px'>"
-                    f"<div style='font-size:22px;font-weight:700;color:{flag_color}'>{total_flags}</div>"
-                    f"<div style='font-size:11px;color:#5b6670'>Total flags "
-                    f"({high_flags} high severity)</div></div>",
+                st.markdown(
+                    f"<div style='padding:6px 0 4px 0;font-size:12px;color:#5b6670'>"
+                    f"Flags: <span style='font-weight:700;color:{flag_color}'>{total_flags} total"
+                    f"</span> &nbsp;·&nbsp; "
+                    f"<span style='color:#c62828;font-weight:600'>{high_flags} high severity</span>"
+                    f"</div>",
                     unsafe_allow_html=True)
 
                 st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)

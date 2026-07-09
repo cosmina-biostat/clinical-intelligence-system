@@ -250,6 +250,41 @@ def _to_binary(val):
     return None
 
 
+def _numeric_to_chol_code(val):
+    """Map a numeric total cholesterol value to the model's 1/2/3 encoding.
+    Uses mmol/L thresholds (<5 normal, 5-6.2 above normal, >6.2 well above).
+    Also accepts mg/dL (divided by 38.67 to convert).
+    """
+    num = _to_number(val)
+    if num is None:
+        return None
+    # If value looks like mg/dL (typically 100-400), convert to mmol/L
+    if num > 20:
+        num = num / 38.67
+    if num < 5.0:
+        return 1.0
+    if num <= 6.2:
+        return 2.0
+    return 3.0
+
+
+def _numeric_to_gluc_code(val):
+    """Map a numeric glucose value to the model's 1/2/3 encoding.
+    Uses mmol/L thresholds (<6.1 normal, 6.1-7.0 above normal, >7.0 well above).
+    """
+    num = _to_number(val)
+    if num is None:
+        return None
+    # If value looks like mg/dL (typically 70-400), convert to mmol/L
+    if num > 20:
+        num = num / 18.0
+    if num < 6.1:
+        return 1.0
+    if num <= 7.0:
+        return 2.0
+    return 3.0
+
+
 def resolve_cardio_features(data: dict) -> tuple[Optional[dict], list[str]]:
     """
     Attempt to build the 12 cardio features from an extracted patient record.
@@ -259,46 +294,72 @@ def resolve_cardio_features(data: dict) -> tuple[Optional[dict], list[str]]:
     """
     missing = []
 
-    age = _to_number(_first_present(data, "age", "age_years"))
+    age = _to_number(_first_present(data, "age", "age_years", "age_at_visit", "patient_age"))
     if age is None: missing.append("age")
 
-    gender = _sex_to_gender_code(_first_present(data, "sex", "gender"))
+    gender = _sex_to_gender_code(_first_present(data, "sex", "gender", "patient_sex", "patient_gender"))
     if gender is None: missing.append("sex")
 
-    height = _to_number(_first_present(data, "height", "height_cm"))
+    height = _to_number(_first_present(data, "height", "height_cm", "height_m"))
+    if height is not None and height < 3:  # convert metres to cm
+        height = height * 100
     if height is None: missing.append("height")
 
-    weight = _to_number(_first_present(data, "weight", "weight_kg"))
+    weight = _to_number(_first_present(data, "weight", "weight_kg", "weight_lbs", "body_weight"))
     if weight is None: missing.append("weight")
 
-    bmi = _to_number(_first_present(data, "bmi"))
+    bmi = _to_number(_first_present(data, "bmi", "body_mass_index"))
     if bmi is None and height and weight:
         bmi = round(weight / ((height / 100) ** 2), 1)
     if bmi is None: missing.append("bmi")
 
-    ap_hi = _to_number(_first_present(data, "ap_hi", "systolic_bp", "sbp", "blood_pressure_systolic"))
-    if ap_hi is None: missing.append("ap_hi (systolic BP)")
+    ap_hi = _to_number(_first_present(
+        data, "ap_hi", "systolic_bp", "sbp", "blood_pressure_systolic",
+        "systolic_blood_pressure", "systolic", "bp_systolic", "bp"))
+    if ap_hi is None: missing.append("systolic BP")
 
-    ap_lo = _to_number(_first_present(data, "ap_lo", "diastolic_bp", "dbp", "blood_pressure_diastolic"))
-    if ap_lo is None: missing.append("ap_lo (diastolic BP)")
+    ap_lo = _to_number(_first_present(
+        data, "ap_lo", "diastolic_bp", "dbp", "blood_pressure_diastolic",
+        "diastolic_blood_pressure", "diastolic", "bp_diastolic"))
+    if ap_lo is None: missing.append("diastolic BP")
 
+    # Cholesterol: accept category string OR numeric value
+    chol_raw = _first_present(
+        data, "cholesterol", "cholesterol_category", "total_cholesterol",
+        "cholesterol_level", "chol")
     cholesterol = _category_to_code(
-        _first_present(data, "cholesterol", "cholesterol_category"),
-        low_terms=["normal"], high_terms=["above normal"], vhigh_terms=["well above"])
+        chol_raw,
+        low_terms=["normal"], high_terms=["above normal", "elevated", "borderline"],
+        vhigh_terms=["well above", "high", "very high"])
+    if cholesterol is None:
+        cholesterol = _numeric_to_chol_code(chol_raw)
     if cholesterol is None: missing.append("cholesterol")
 
+    # Glucose: accept category string OR numeric value
+    gluc_raw = _first_present(
+        data, "gluc", "glucose", "glucose_category", "blood_glucose",
+        "fasting_glucose", "blood_sugar", "hba1c")
     gluc = _category_to_code(
-        _first_present(data, "gluc", "glucose", "glucose_category"),
-        low_terms=["normal"], high_terms=["above normal"], vhigh_terms=["well above"])
+        gluc_raw,
+        low_terms=["normal"], high_terms=["above normal", "elevated", "impaired"],
+        vhigh_terms=["well above", "high", "diabetic", "very high"])
+    if gluc is None:
+        gluc = _numeric_to_gluc_code(gluc_raw)
     if gluc is None: missing.append("glucose")
 
-    smoke = _to_binary(_first_present(data, "smoke", "smoking", "current_smoker"))
+    smoke = _to_binary(_first_present(
+        data, "smoke", "smoking", "current_smoker", "smoker",
+        "tobacco", "smoking_status"))
     if smoke is None: missing.append("smoking status")
 
-    alco = _to_binary(_first_present(data, "alco", "alcohol"))
+    alco = _to_binary(_first_present(
+        data, "alco", "alcohol", "alcohol_use", "alcohol_consumption",
+        "drinks", "drinking"))
     if alco is None: missing.append("alcohol use")
 
-    active = _to_binary(_first_present(data, "active", "physical_activity"))
+    active = _to_binary(_first_present(
+        data, "active", "physical_activity", "physically_active",
+        "exercise", "physical_activity_status"))
     if active is None: missing.append("physical activity")
 
     if missing:
