@@ -9,7 +9,7 @@ import json
 import os
 import time
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 
 def get_or_build_index(pdf_path: str) -> ProtocolVectorStore:
