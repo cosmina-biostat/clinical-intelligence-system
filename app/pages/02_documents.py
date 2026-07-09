@@ -365,44 +365,86 @@ elif page == "Extraction":
 # ── STRUCTURED ────────────────────────────────────────────────────────────────
 elif page == "Structured":
     st.markdown("# Structured data")
-    st.caption("All extracted records with an automatic risk prediction column.")
+    st.caption("All extracted records with review status, quality, risk predictions, and anomaly profiles.")
     if not st.session_state.records:
         st.info("No records yet. Run an extraction.")
     else:
         predictions = get_cached_predictions()
+        _, _, _, _, resolve_features, _, _ = _load_backend()
+
+        # Load isolation forest for anomaly detection
+        @st.cache_resource(show_spinner=False)
+        def _load_iso():
+            import joblib as _jl
+            p = Path("models/saved/iso_forest_cardio.pkl")
+            return _jl.load(p) if p.exists() else None
+        iso = _load_iso()
+
+        _ISO_FEATURES = ["age_years", "gender", "height", "weight", "bmi",
+                         "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
+
+        # Build rows for the dataframe
         rows = []
         for rec, pred in zip(st.session_state.records, predictions):
             row = dict(rec["data"])
-            row["_review"]  = rec.get("review_status")
-            row["_quality"] = rec.get("quality_score")
-            row["_flags"]   = rec["features"].get("total_flags")
+            row["Review"]       = rec.get("review_status", "Review")
+            row["Quality %"]    = round((rec.get("quality_score") or 0) * 100, 1)
+            row["Completeness %"] = round((rec["features"].get("completeness_score") or 0) * 100, 1)
+            row["Flags"]        = int(rec["features"].get("total_flags", 0))
+            row["High Severity Flags"] = int(rec["features"].get("high_severity_flags", 0))
             if pred and pred.get("available"):
-                row["risk_prediction"]  = pred["label"]
-                row["risk_probability"] = pred["probability"]
+                row["Risk Prediction"]  = pred["label"]
+                row["Risk Probability"] = pred["probability"]
             elif pred and pred.get("reason") == "missing_fields":
-                row["risk_prediction"]  = "insufficient data"
-                row["risk_probability"] = None
+                row["Risk Prediction"]  = "insufficient data"
+                row["Risk Probability"] = None
             elif pred and pred.get("reason") == "no_model_for_indication":
-                row["risk_prediction"]  = "no model for this indication"
-                row["risk_probability"] = None
+                row["Risk Prediction"]  = "no model for this indication"
+                row["Risk Probability"] = None
             else:
-                row["risk_prediction"]  = "—"
-                row["risk_probability"] = None
+                row["Risk Prediction"]  = "—"
+                row["Risk Probability"] = None
             rows.append(row)
 
         df = pd.DataFrame(rows)
+
+        # ── Column visibility filter ────────────────────────────────────────────
+        system_cols = ["Review", "Quality %", "Completeness %", "Flags",
+                       "High Severity Flags", "Risk Prediction", "Risk Probability"]
+        data_cols   = [c for c in df.columns if c not in system_cols]
+
+        with st.expander("Column visibility", expanded=False):
+            shown_data = st.multiselect(
+                "Patient data fields",
+                options=data_cols,
+                default=data_cols[:min(8, len(data_cols))],
+            )
+            shown_sys = st.multiselect(
+                "System fields",
+                options=system_cols,
+                default=system_cols,
+            )
+
+        display_cols = [c for c in shown_data + shown_sys if c in df.columns]
+        display_df   = df[display_cols] if display_cols else df
+
         st.dataframe(
-            df,
+            display_df,
             use_container_width=True,
             column_config={
-                "risk_probability": st.column_config.ProgressColumn(
-                    "Risk Probability",
-                    min_value=0,
-                    max_value=1,
-                    format="%.1%",
-                )
+                "Review": st.column_config.TextColumn("Review"),
+                "Quality %": st.column_config.ProgressColumn(
+                    "Quality %", min_value=0, max_value=100, format="%.1f%%"),
+                "Completeness %": st.column_config.ProgressColumn(
+                    "Completeness %", min_value=0, max_value=100, format="%.1f%%"),
+                "Flags": st.column_config.NumberColumn("Flags", format="%d ⚑"),
+                "High Severity Flags": st.column_config.NumberColumn("High Sev. Flags", format="%d"),
+                "Risk Prediction": st.column_config.TextColumn("Risk Prediction"),
+                "Risk Probability": st.column_config.ProgressColumn(
+                    "Risk Probability", min_value=0, max_value=1, format="%.1%"),
             },
         )
+
         all_keys = list(dict.fromkeys(k for r in rows for k in r))
         buf = io.StringIO()
         w = csv.DictWriter(buf, fieldnames=all_keys)
@@ -410,49 +452,100 @@ elif page == "Structured":
         st.download_button("Download CSV", buf.getvalue(),
                            file_name="cdim_records.csv", mime="text/csv")
 
-        # ── Per-patient risk probability cards ─────────────────────────────────
-        st.markdown("<hr style='border-color:#e6e9ec;margin:16px 0'>", unsafe_allow_html=True)
-        st.markdown("<div class='section-label'>Risk probability by patient</div>",
+        # ── Per-patient detail cards ────────────────────────────────────────────
+        st.markdown("<hr style='border-color:#e6e9ec;margin:20px 0'>", unsafe_allow_html=True)
+        st.markdown("<div class='section-label'>Patient detail cards</div>",
                     unsafe_allow_html=True)
 
         for i, (rec, pred) in enumerate(zip(st.session_state.records, predictions)):
             pid = (rec.get("patient_id") or rec["data"].get("patient_id")
                    or f"Patient {i + 1}")
-            if pred and pred.get("available"):
-                prob  = pred["probability"]
-                label = pred["label"]
-                color = ("#c62828" if prob >= 0.66
-                         else "#f9a825" if prob >= 0.33 else "#2e7d32")
-                st.markdown(
-                    f"<div style='font-size:12px;font-weight:600;color:#5b6670;"
-                    f"margin-bottom:2px'>{pid}</div>",
+
+            with st.expander(f"Patient: {pid}", expanded=(i == 0)):
+                c1, c2, c3 = st.columns(3)
+
+                # Review status
+                v = rec.get("review_status", "Review")
+                s = VERDICT.get(v, VERDICT["Review"])
+                c1.markdown(
+                    f"<div style='text-align:center;padding:10px;background:{s['bg']};"
+                    f"border-radius:10px'>"
+                    f"<div style='font-size:24px;color:{s['c']}'>{s['i']}</div>"
+                    f"<div style='font-weight:700;color:{s['c']};font-size:13px'>{s['l']}</div>"
+                    f"<div style='font-size:11px;color:#5b6670'>Review status</div></div>",
                     unsafe_allow_html=True)
-                st.markdown(
-                    f"<div style='font-size:13px;color:{color};font-weight:600;"
-                    f"margin-bottom:6px'>{label}</div>",
+
+                # Quality
+                qs = rec.get("quality_score") or 0
+                qcolor = "#2e7d32" if qs >= 0.8 else ("#f9a825" if qs >= 0.5 else "#c62828")
+                c2.markdown(
+                    f"<div style='text-align:center;padding:10px'>"
+                    f"<div style='font-size:22px;font-weight:700;color:{qcolor}'>{qs:.0%}</div>"
+                    f"<div style='font-size:11px;color:#5b6670'>Quality score</div></div>",
                     unsafe_allow_html=True)
-                st.progress(prob, text=f"{prob:.1%}")
-                st.markdown("<div style='margin-bottom:14px'></div>",
+                c2.progress(qs)
+
+                # Flags
+                total_flags = int(rec["features"].get("total_flags", 0))
+                high_flags  = int(rec["features"].get("high_severity_flags", 0))
+                flag_color  = "#c62828" if high_flags > 0 else ("#f9a825" if total_flags > 0 else "#2e7d32")
+                c3.markdown(
+                    f"<div style='text-align:center;padding:10px'>"
+                    f"<div style='font-size:22px;font-weight:700;color:{flag_color}'>{total_flags}</div>"
+                    f"<div style='font-size:11px;color:#5b6670'>Total flags "
+                    f"({high_flags} high severity)</div></div>",
+                    unsafe_allow_html=True)
+
+                st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
+
+                # Risk prediction + probability
+                if pred and pred.get("available"):
+                    prob  = pred["probability"]
+                    label = pred["label"]
+                    pcolor = ("#c62828" if prob >= 0.66
+                              else "#f9a825" if prob >= 0.33 else "#2e7d32")
+                    st.markdown(
+                        f"<div class='section-label'>Risk prediction</div>",
+                        unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='font-size:15px;font-weight:700;color:{pcolor};"
+                        f"margin-bottom:6px'>{label}</div>",
+                        unsafe_allow_html=True)
+                    st.progress(prob, text=f"Risk probability: {prob:.1%}")
+                elif pred and pred.get("reason") == "missing_fields":
+                    missing = pred.get("missing", [])
+                    st.markdown(
+                        f"<div class='answer-box' style='border-left-color:#f9a825'>"
+                        f"⚠️ <b>Risk prediction: insufficient data</b><br>"
+                        f"Missing fields: <code>{', '.join(missing)}</code></div>",
+                        unsafe_allow_html=True)
+                else:
+                    st.markdown(
+                        "<div class='answer-box' style='border-left-color:#c9d2da'>"
+                        "ℹ️ No risk model available for this indication.</div>",
+                        unsafe_allow_html=True)
+
+                # Anomaly profile
+                if iso is not None:
+                    feats, _ = resolve_features("cardio", rec["data"])
+                    if feats is not None:
+                        import numpy as np
+                        feat_row = pd.DataFrame(
+                            [[feats[f] for f in _ISO_FEATURES]], columns=_ISO_FEATURES)
+                        iso_flag  = iso.predict(feat_row)[0]
+                        iso_score = float(iso.decision_function(feat_row)[0])
+                        zone  = ("Anomalous" if iso_score < 0
+                                 else "Borderline" if iso_score < 0.05 else "Normal")
+                        acolor = ("#c62828" if iso_score < 0
+                                  else "#f9a825" if iso_score < 0.05 else "#2e7d32")
+                        st.markdown("<div class='section-label'>Anomaly profile</div>",
+                                    unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div class='answer-box' style='border-left-color:{acolor}'>"
+                            f"{'⚠️ <b>Anomalous profile</b>' if iso_flag == -1 else '✅ <b>Normal profile</b>'}"
+                            f" — Isolation Forest score: <code>{iso_score:.4f}</code> "
+                            f"({zone})</div>",
                             unsafe_allow_html=True)
-            elif pred and pred.get("reason") == "missing_fields":
-                missing = pred.get("missing", [])
-                st.markdown(
-                    f"<div style='font-size:12px;font-weight:600;color:#5b6670;"
-                    f"margin-bottom:2px'>{pid}</div>",
-                    unsafe_allow_html=True)
-                st.markdown(
-                    f"<div class='answer-box' style='border-left-color:#f9a825'>"
-                    f"⚠️ <b>Insufficient data</b> — missing fields: "
-                    f"<code>{', '.join(missing)}</code><br>"
-                    f"<span style='font-size:12px;color:#5b6670'>Ensure the source "
-                    f"text contains these values and re-run extraction.</span></div>",
-                    unsafe_allow_html=True)
-            elif pred and pred.get("reason") == "no_model_for_indication":
-                st.markdown(
-                    f"<div class='answer-box' style='border-left-color:#c9d2da'>"
-                    f"ℹ️ <b>{pid}</b> — no risk model available for this indication."
-                    f"</div>",
-                    unsafe_allow_html=True)
 
 
 # ── MONITORING ────────────────────────────────────────────────────────────────
