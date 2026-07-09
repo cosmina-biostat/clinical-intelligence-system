@@ -384,13 +384,20 @@ elif page == "Structured":
                          "ap_hi", "ap_lo", "cholesterol", "gluc", "smoke", "alco", "active"]
 
         # Build rows for the dataframe
+        def _pct_label(pct, thresholds=(80, 60)):
+            hi, mid = thresholds
+            icon = "🟢" if pct >= hi else ("🟡" if pct >= mid else "🔴")
+            return f"{icon} {pct:.1f}%"
+
         rows = []
         for rec, pred in zip(st.session_state.records, predictions):
             row = dict(rec["data"])
-            row["Review"]       = rec.get("review_status", "Review")
-            row["Quality %"]    = round((rec.get("quality_score") or 0) * 100, 1)
-            row["Completeness %"] = round((rec["features"].get("completeness_score") or 0) * 100, 1)
-            row["Flags"]        = int(rec["features"].get("total_flags", 0))
+            row["Review"]         = rec.get("review_status", "Review")
+            qs  = round((rec.get("quality_score") or 0) * 100, 1)
+            cs  = round((rec["features"].get("completeness_score") or 0) * 100, 1)
+            row["Quality %"]      = _pct_label(qs)
+            row["Completeness %"] = _pct_label(cs, thresholds=(100, 60))
+            row["Flags"]          = int(rec["features"].get("total_flags", 0))
             row["High Severity Flags"] = int(rec["features"].get("high_severity_flags", 0))
             if pred and pred.get("available"):
                 row["Risk Prediction"]  = pred["label"]
@@ -433,10 +440,8 @@ elif page == "Structured":
             use_container_width=True,
             column_config={
                 "Review": st.column_config.TextColumn("Review"),
-                "Quality %": st.column_config.ProgressColumn(
-                    "Quality %", min_value=0, max_value=100, format="%.1f%%"),
-                "Completeness %": st.column_config.ProgressColumn(
-                    "Completeness %", min_value=0, max_value=100, format="%.1f%%"),
+                "Quality %": st.column_config.TextColumn("Quality %"),
+                "Completeness %": st.column_config.TextColumn("Completeness %"),
                 "Flags": st.column_config.NumberColumn("Flags", format="%d ⚑"),
                 "High Severity Flags": st.column_config.NumberColumn("High Sev. Flags", format="%d"),
                 "Risk Prediction": st.column_config.TextColumn("Risk Prediction"),
