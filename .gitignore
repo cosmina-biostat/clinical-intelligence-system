@@ -46,4 +46,16 @@ reports/figures/*
 # API keys — NEVER commit these
 .env
 *.key
-.env
+
+# Uploaded protocol temp files
+backend/protocols/tmp*.pdf
+backend/schema/tmp*_schema.json
+
+# ChromaDB vector store (rebuilt automatically on first run)
+backend/protocols/chroma_db/
+
+# Run script (local only)
+run.sh
+
+# Local backend env
+backend/env
