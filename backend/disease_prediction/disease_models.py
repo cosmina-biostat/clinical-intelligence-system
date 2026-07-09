@@ -362,14 +362,44 @@ def resolve_cardio_features(data: dict) -> tuple[Optional[dict], list[str]]:
         "exercise", "physical_activity_status"))
     if active is None: missing.append("physical activity")
 
-    if missing:
+    # Hard-required fields — cannot predict without these
+    hard_required = [f for f in missing if f in ("age", "sex", "systolic BP", "diastolic BP")]
+    if hard_required:
         return None, missing
+
+    # Soft-optional fields — use population defaults when absent from the letter
+    defaulted = []
+    if cholesterol is None:
+        cholesterol = 1.0   # normal
+        defaulted.append("cholesterol (defaulted: normal)")
+    if gluc is None:
+        gluc = 1.0          # normal
+        defaulted.append("glucose (defaulted: normal)")
+    if smoke is None:
+        smoke = 0.0         # non-smoker
+        defaulted.append("smoking (defaulted: no)")
+    if alco is None:
+        alco = 0.0          # no alcohol
+        defaulted.append("alcohol (defaulted: no)")
+    if active is None:
+        active = 1.0        # physically active
+        defaulted.append("physical activity (defaulted: yes)")
+    if height is None:
+        height = 170.0      # population average cm
+        defaulted.append("height (defaulted: 170 cm)")
+    if weight is None:
+        weight = 75.0       # population average kg
+        defaulted.append("weight (defaulted: 75 kg)")
+    if bmi is None:
+        bmi = round(weight / ((height / 100) ** 2), 1)
+        defaulted.append("bmi (computed from defaults)")
 
     return {
         "age_years": age, "height": height, "weight": weight, "bmi": bmi,
         "ap_hi": ap_hi, "ap_lo": ap_lo, "gender": gender,
         "cholesterol": cholesterol, "gluc": gluc,
         "smoke": smoke, "alco": alco, "active": active,
+        "_defaulted": defaulted,
     }, []
 
 

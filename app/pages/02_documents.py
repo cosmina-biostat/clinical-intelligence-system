@@ -147,15 +147,18 @@ def get_cached_predictions():
                     predictions.append({"available": False, "reason": "missing_fields", "missing": missing})
                     continue
                 try:
+                    defaulted = features.pop("_defaulted", [])
                     row = pd.DataFrame(
                         [[features[f] for f in model_card.feature_order]],
                         columns=model_card.feature_order,
                     )
                     result = model_card.predict_fn(row)
                     predictions.append({"available": True, "label": result.label,
-                                        "probability": result.probability})
-                except Exception:
-                    predictions.append({"available": False, "reason": "model_not_implemented"})
+                                        "probability": result.probability,
+                                        "defaulted": defaulted})
+                except Exception as e:
+                    predictions.append({"available": False, "reason": "model_not_implemented",
+                                        "error": str(e)})
         st.session_state._pred_cache     = predictions
         st.session_state._pred_cache_key = cache_key
     return st.session_state._pred_cache
@@ -400,10 +403,11 @@ elif page == "Structured":
             row["Flags"]          = int(rec["features"].get("total_flags", 0))
             row["High Severity Flags"] = int(rec["features"].get("high_severity_flags", 0))
             if pred and pred.get("available"):
-                row["Risk Prediction"]  = pred["label"]
+                suffix = " *" if pred.get("defaulted") else ""
+                row["Risk Prediction"]  = pred["label"] + suffix
                 row["Risk Probability"] = pred["probability"]
             elif pred and pred.get("reason") == "missing_fields":
-                row["Risk Prediction"]  = "insufficient data"
+                row["Risk Prediction"]  = "⚠ insufficient data"
                 row["Risk Probability"] = None
             elif pred and pred.get("reason") == "no_model_for_indication":
                 row["Risk Prediction"]  = "no model for this indication"
@@ -524,20 +528,26 @@ elif page == "Structured":
                     label = pred["label"]
                     pcolor = ("#c62828" if prob >= 0.66
                               else "#f9a825" if prob >= 0.33 else "#2e7d32")
-                    st.markdown(
-                        f"<div class='section-label'>Risk prediction</div>",
-                        unsafe_allow_html=True)
+                    st.markdown("<div class='section-label'>Risk prediction</div>",
+                                unsafe_allow_html=True)
                     st.markdown(
                         f"<div style='font-size:15px;font-weight:700;color:{pcolor};"
                         f"margin-bottom:6px'>{label}</div>",
                         unsafe_allow_html=True)
                     st.progress(prob, text=f"Risk probability: {prob:.1%}")
+                    defaulted = pred.get("defaulted", [])
+                    if defaulted:
+                        st.markdown(
+                            f"<div style='font-size:11px;color:#8b9299;margin-top:6px'>"
+                            f"ℹ️ Partial prediction — missing fields used population defaults: "
+                            f"{', '.join(defaulted)}</div>",
+                            unsafe_allow_html=True)
                 elif pred and pred.get("reason") == "missing_fields":
                     missing = pred.get("missing", [])
                     st.markdown(
-                        f"<div class='answer-box' style='border-left-color:#f9a825'>"
-                        f"⚠️ <b>Risk prediction: insufficient data</b><br>"
-                        f"Missing fields: <code>{', '.join(missing)}</code></div>",
+                        f"<div class='answer-box' style='border-left-color:#c62828'>"
+                        f"✕ <b>Risk prediction: cannot compute</b><br>"
+                        f"Core fields missing: <code>{', '.join(missing)}</code></div>",
                         unsafe_allow_html=True)
                 else:
                     st.markdown(
